@@ -14,6 +14,7 @@ Why this approach?
 •	Correctness first: database constraints are the strongest guardrails.
 •	Developer ergonomics: TypeScript enums make statuses explicit and safe.
 •	Speed: Supabase RPC integrates directly with Next.js, minimizing boilerplate.
+
 Tradeoffs
 •	Pessimistic row locking (FOR UPDATE) ensures correctness but can reduce concurrency under heavy load.
 •	Business logic in SQL: harder to iterate quickly, but guarantees atomicity.
