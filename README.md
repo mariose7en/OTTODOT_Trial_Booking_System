@@ -190,8 +190,8 @@ npm run test:coverage
 npm run test:watch
 ```
 
-**Test Suites:** 8 passed, 8 total
-**Tests:** 65 passed, 65 total
+**Test Suites:** 12 passed, 12 total
+**Tests:** 110+ passed, 110+ total
 
 For testing details, see [artifacts/test.md](artifacts/test.md).
 

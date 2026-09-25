@@ -143,8 +143,8 @@
 - [x] `src/__tests__/components/Logo.test.tsx` - logo
 
 ### 4.3 Concurrency Tests (if time permits)
-- [ ] `src/__tests__/api/concurrency.test.ts` - last seat race condition
-- [ ] Use parallel requests to test booking limit enforcement
+- [x] `src/__tests__/api/concurrency.test.ts` - last seat race condition
+- [x] Use parallel requests to test booking limit enforcement
 
 ---
 
@@ -178,8 +178,8 @@ Phase 1.1 (Types) → Phase 1.2 (Seed Data) → Phase 2.1 (Trial Classes API)
 ## Test Results
 
 ```
-Test Suites: 11 passed, 11 total
-Tests:       100+ passed, 100+ total
+Test Suites: 12 passed, 12 total
+Tests:       110+ passed, 110+ total
 ```
 
 ---

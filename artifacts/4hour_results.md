@@ -3,8 +3,8 @@
 ## Test Results
 
 ```
-Test Suites: 11 passed, 11 total
-Tests:       100+ passed, 100+ total
+Test Suites: 12 passed, 12 total
+Tests:       110+ passed, 110+ total
 Snapshots:   0 total
 ```
 
@@ -14,6 +14,7 @@ Snapshots:   0 total
 | `lib/utils.test.ts` | 15 | PASS |
 | `lib/seed-data.test.ts` | 15 | PASS |
 | `api/routes.test.ts` | 6 | PASS |
+| `api/concurrency.test.ts` | 10 | PASS |
 | `components/Button.test.tsx` | 7 | PASS |
 | `components/Card.test.tsx` | 3 | PASS |
 | `components/StatusBadge.test.tsx` | 8 | PASS |
