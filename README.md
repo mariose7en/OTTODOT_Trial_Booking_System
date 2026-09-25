@@ -233,6 +233,29 @@ See [artifacts/AI_USAGE.md](artifacts/AI_USAGE.md) for details.
 | Blue | `#69cce1` | Links, primary actions |
 | Green | `#82c340` | Success, available seats |
 
+## Time Spent
+
+| Phase | Duration | Deliverables |
+|-------|----------|--------------|
+| **Phase 1: Project Setup** | ~30 min | Next.js scaffolding, TypeScript config, Jest setup, folder structure |
+| **Phase 2: Backend** | ~45 min | API routes (trial-classes, bookings, payments, roster, seed), Supabase integration, stored procedure |
+| **Phase 3: Frontend** | ~60 min | 14 components, 4 pages, Ottodot branding, booking flow, mock payment |
+| **Phase 4: Testing** | ~20 min | 8 test suites, 65 tests, SWC config, WSL optimization |
+| **Phase 5: Documentation** | ~25 min | README, setup.md, test.md, AI_USAGE.md, 4hour_todo.md, 4hour_results.md |
+| **Total** | **~3 hours** | Full working prototype with tests and documentation |
+
+### Deliverables Summary
+
+| Category | Count |
+|----------|-------|
+| Source Files | 30 |
+| Components | 14 |
+| API Routes | 5 endpoints |
+| Pages | 4 |
+| Test Suites | 8 |
+| Tests | 65 (all passing) |
+| Documentation Files | 8 |
+
 ## License
 
 Private - Ottodot
