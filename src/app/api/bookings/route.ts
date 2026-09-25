@@ -7,6 +7,17 @@ import {
   BookingResponse,
   Booking,
 } from "@/types/booking";
+import {
+  CreateBookingSchema,
+  BookingQuerySchema,
+} from "@/lib/validations/booking";
+import {
+  ValidationError,
+  DatabaseError,
+  NotFoundError,
+  ConflictError,
+  createErrorResponse,
+} from "@/lib/errors";
 
 function generateSmartId(prefix: string, residentialId: string): string {
   const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
@@ -21,21 +32,35 @@ function generateBookingId(): string {
   return `BOOKING${random}-${date}`;
 }
 
-export async function GET(): Promise<
+export async function GET(request: Request): Promise<
   NextResponse<ApiResponse<Booking[]>>
 > {
   try {
-    const { data: bookings, error } = await supabase
+    const { searchParams } = new URL(request.url);
+    const query = Object.fromEntries(searchParams.entries());
+
+    const validatedQuery = BookingQuerySchema.parse(query);
+
+    let queryBuilder = supabase
       .from("bookings")
       .select("*")
       .order("registered_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching bookings:", error);
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch bookings" },
-        { status: 500 }
+    if (validatedQuery.status) {
+      queryBuilder = queryBuilder.eq("status", validatedQuery.status);
+    }
+
+    if (validatedQuery.trial_class_id) {
+      queryBuilder = queryBuilder.eq(
+        "trial_class_id",
+        validatedQuery.trial_class_id
       );
+    }
+
+    const { data: bookings, error } = await queryBuilder;
+
+    if (error) {
+      throw new DatabaseError("Failed to fetch bookings", error);
     }
 
     return NextResponse.json({
@@ -43,11 +68,7 @@ export async function GET(): Promise<
       data: bookings as Booking[],
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Bookings GET");
   }
 }
 
@@ -55,33 +76,10 @@ export async function POST(request: Request): Promise<
   NextResponse<ApiResponse<BookingResponse>>
 > {
   try {
-    const body: CreateBookingRequest = await request.json();
-    const {
-      parent_first_name,
-      parent_last_name,
-      parent_email,
-      parent_residential_id,
-      student_first_name,
-      student_last_name,
-      student_residential_id,
-      trial_class_id,
-    } = body;
+    const body = await request.json();
+    const validatedData = CreateBookingSchema.parse(body);
 
-    if (
-      !parent_first_name ||
-      !parent_last_name ||
-      !parent_email ||
-      !parent_residential_id ||
-      !student_first_name ||
-      !student_last_name ||
-      !student_residential_id ||
-      !trial_class_id
-    ) {
-      return NextResponse.json(
-        { success: false, error: "All fields are required" },
-        { status: 400 }
-      );
-    }
+    const { trial_class_id, parent, student } = validatedData;
 
     const { data: trialClass, error: classError } = await supabase
       .from("trial_classes")
@@ -90,19 +88,16 @@ export async function POST(request: Request): Promise<
       .single();
 
     if (classError || !trialClass) {
-      return NextResponse.json(
-        { success: false, error: "Trial class not found" },
-        { status: 404 }
-      );
+      throw new NotFoundError("Trial class", trial_class_id);
     }
 
-    const parentInitials = `${parent_first_name[0]}${parent_last_name[0]}`;
-    const parentId = generateSmartId(parentInitials, parent_residential_id);
+    const parentInitials = `${parent.first_name[0]}${parent.last_name[0]}`;
+    const parentId = generateSmartId(parentInitials, parent.phone);
 
     const { data: existingParent } = await supabase
       .from("parents")
       .select("id")
-      .eq("email", parent_email)
+      .eq("email", parent.email)
       .single();
 
     let actualParentId = parentId;
@@ -111,28 +106,24 @@ export async function POST(request: Request): Promise<
     } else {
       const { error: parentError } = await supabase.from("parents").insert({
         id: parentId,
-        first_name: parent_first_name,
-        last_name: parent_last_name,
-        residential_id: parent_residential_id,
-        email: parent_email,
+        first_name: parent.first_name,
+        last_name: parent.last_name,
+        residential_id: parent.phone,
+        email: parent.email,
       });
 
       if (parentError) {
-        console.error("Error creating parent:", parentError);
-        return NextResponse.json(
-          { success: false, error: "Failed to create parent record" },
-          { status: 500 }
-        );
+        throw new DatabaseError("Failed to create parent record", parentError);
       }
     }
 
-    const studentInitials = `${student_first_name[0]}${student_last_name[0]}`;
-    const studentId = generateSmartId(studentInitials, student_residential_id);
+    const studentInitials = `${student.first_name[0]}${student.last_name[0]}`;
+    const studentId = generateSmartId(studentInitials, student.grade.toString());
 
     const { data: existingStudent } = await supabase
       .from("students")
       .select("id")
-      .eq("residential_id", student_residential_id)
+      .eq("residential_id", student.grade.toString())
       .eq("parent_id", actualParentId)
       .single();
 
@@ -143,17 +134,13 @@ export async function POST(request: Request): Promise<
       const { error: studentError } = await supabase.from("students").insert({
         id: studentId,
         parent_id: actualParentId,
-        first_name: student_first_name,
-        last_name: student_last_name,
-        residential_id: student_residential_id,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        residential_id: student.grade.toString(),
       });
 
       if (studentError) {
-        console.error("Error creating student:", studentError);
-        return NextResponse.json(
-          { success: false, error: "Failed to create student record" },
-          { status: 500 }
-        );
+        throw new DatabaseError("Failed to create student record", studentError);
       }
     }
 
@@ -166,13 +153,7 @@ export async function POST(request: Request): Promise<
     const seatsRemaining = trialClass.max_seats - (confirmedCount || 0);
 
     if (seatsRemaining <= 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No seats available for this class",
-        },
-        { status: 409 }
-      );
+      throw new ConflictError("No seats available for this class");
     }
 
     const bookingId = generateBookingId();
@@ -188,11 +169,7 @@ export async function POST(request: Request): Promise<
       .single();
 
     if (bookingError) {
-      console.error("Error creating booking:", bookingError);
-      return NextResponse.json(
-        { success: false, error: "Failed to create booking" },
-        { status: 500 }
-      );
+      throw new DatabaseError("Failed to create booking", bookingError);
     }
 
     return NextResponse.json({
@@ -203,10 +180,6 @@ export async function POST(request: Request): Promise<
       },
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Bookings POST");
   }
 }

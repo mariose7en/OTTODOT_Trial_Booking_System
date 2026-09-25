@@ -3,10 +3,15 @@ import { supabase } from "@/lib/supabase";
 import {
   BookingStatus,
   PaymentAttemptStatus,
-  ConfirmPaymentRequest,
   ApiResponse,
   BookingResponse,
 } from "@/types/booking";
+import { ConfirmPaymentSchema } from "@/lib/validations/booking";
+import {
+  DatabaseError,
+  NotFoundError,
+  createErrorResponse,
+} from "@/lib/errors";
 
 function generateAttemptId(): string {
   const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
@@ -24,13 +29,28 @@ export async function POST(request: Request): Promise<
   NextResponse<ApiResponse<BookingResponse>>
 > {
   try {
-    const body: ConfirmPaymentRequest = await request.json();
-    const { booking_id, payment_result } = body;
+    const body = await request.json();
+    const validatedData = ConfirmPaymentSchema.parse(body);
 
-    if (!booking_id || !payment_result) {
+    const { booking_id, payment_result } = validatedData;
+
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .select("id, status")
+      .eq("id", booking_id)
+      .single();
+
+    if (bookingError || !booking) {
+      throw new NotFoundError("Booking", booking_id);
+    }
+
+    if (booking.status !== BookingStatus.PendingPayment) {
       return NextResponse.json(
-        { success: false, error: "booking_id and payment_result are required" },
-        { status: 400 }
+        {
+          success: false,
+          error: `Booking is not in pending payment status. Current status: ${booking.status}`,
+        },
+        { status: 409 }
       );
     }
 
@@ -63,10 +83,7 @@ export async function POST(request: Request): Promise<
         .update({ status: PaymentAttemptStatus.Failed })
         .eq("id", attemptId);
 
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      );
+      throw new DatabaseError("Payment processing failed", error);
     }
 
     const finalStatus =
@@ -87,10 +104,6 @@ export async function POST(request: Request): Promise<
       },
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Payment Confirm POST");
   }
 }

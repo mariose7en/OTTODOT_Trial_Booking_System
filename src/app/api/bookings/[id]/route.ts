@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { Booking, ApiResponse } from "@/types/booking";
+import { z } from "zod";
+import { NotFoundError, DatabaseError, createErrorResponse } from "@/lib/errors";
+
+const BookingIdSchema = z.object({
+  id: z.string().uuid("Invalid booking ID format"),
+});
 
 export async function GET(
   request: Request,
@@ -9,25 +15,16 @@ export async function GET(
   try {
     const { id } = params;
 
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Booking ID is required" },
-        { status: 400 }
-      );
-    }
+    const validatedParams = BookingIdSchema.parse({ id });
 
     const { data: booking, error } = await supabase
       .from("bookings")
       .select("*")
-      .eq("id", id)
+      .eq("id", validatedParams.id)
       .single();
 
-    if (error) {
-      console.error("Error fetching booking:", error);
-      return NextResponse.json(
-        { success: false, error: "Booking not found" },
-        { status: 404 }
-      );
+    if (error || !booking) {
+      throw new NotFoundError("Booking", validatedParams.id);
     }
 
     return NextResponse.json({
@@ -35,10 +32,6 @@ export async function GET(
       data: booking as Booking,
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Booking GET");
   }
 }

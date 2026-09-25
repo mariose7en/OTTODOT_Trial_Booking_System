@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { BookingStatus, ApiResponse, RosterResponse } from "@/types/booking";
+import { RosterParamsSchema } from "@/lib/validations/booking";
+import {
+  NotFoundError,
+  DatabaseError,
+  createErrorResponse,
+} from "@/lib/errors";
 
 export async function GET(
   request: Request,
@@ -9,24 +15,16 @@ export async function GET(
   try {
     const { class_id } = params;
 
-    if (!class_id) {
-      return NextResponse.json(
-        { success: false, error: "class_id is required" },
-        { status: 400 }
-      );
-    }
+    const validatedParams = RosterParamsSchema.parse({ class_id });
 
     const { data: trialClass, error: classError } = await supabase
       .from("trial_classes")
       .select("id, class_name, max_seats")
-      .eq("id", class_id)
+      .eq("id", validatedParams.class_id)
       .single();
 
     if (classError || !trialClass) {
-      return NextResponse.json(
-        { success: false, error: "Trial class not found" },
-        { status: 404 }
-      );
+      throw new NotFoundError("Trial class", validatedParams.class_id);
     }
 
     const { data: bookings, error: bookingError } = await supabase
@@ -41,15 +39,11 @@ export async function GET(
           email
         )
       `)
-      .eq("trial_class_id", class_id)
+      .eq("trial_class_id", validatedParams.class_id)
       .eq("status", BookingStatus.Confirmed);
 
     if (bookingError) {
-      console.error("Error fetching bookings:", bookingError);
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch roster" },
-        { status: 500 }
-      );
+      throw new DatabaseError("Failed to fetch roster", bookingError);
     }
 
     const confirmedStudents = (bookings || []).map((booking) => {
@@ -79,10 +73,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Roster GET");
   }
 }

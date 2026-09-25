@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { TrialClassWithSeats, ApiResponse } from "@/types/booking";
+import { TrialClassQuerySchema } from "@/lib/validations/booking";
+import { DatabaseError, createErrorResponse } from "@/lib/errors";
 
 export async function GET(
   request: Request
 ): Promise<NextResponse<ApiResponse<TrialClassWithSeats[]>>> {
   try {
     const { searchParams } = new URL(request.url);
-    const availableOnly = searchParams.get("available") === "true";
+    const query = Object.fromEntries(searchParams.entries());
+
+    const validatedQuery = TrialClassQuerySchema.parse(query);
 
     const { data: trialClasses, error: classError } = await supabase
       .from("trial_classes")
@@ -15,11 +19,7 @@ export async function GET(
       .order("start_time", { ascending: true });
 
     if (classError) {
-      console.error("Error fetching trial classes:", classError);
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch trial classes" },
-        { status: 500 }
-      );
+      throw new DatabaseError("Failed to fetch trial classes", classError);
     }
 
     const classesWithSeats: TrialClassWithSeats[] = await Promise.all(
@@ -38,7 +38,7 @@ export async function GET(
       })
     );
 
-    const filtered = availableOnly
+    const filtered = validatedQuery.available
       ? classesWithSeats.filter((c) => c.seats_remaining > 0)
       : classesWithSeats;
 
@@ -47,10 +47,6 @@ export async function GET(
       data: filtered,
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, "Trial Classes GET");
   }
 }

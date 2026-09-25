@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Booking,
   BookingStatus,
@@ -9,6 +10,7 @@ import {
 import { BookingStats } from "@/components/BookingStats";
 import { RecentActivity, Activity } from "@/components/RecentActivity";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/Button";
 
 export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -72,6 +74,18 @@ export default function AdminPage() {
           </p>
         </div>
 
+        <div className="flex flex-wrap gap-4 justify-center mb-8">
+          <Link href="/admin/bookings">
+            <Button variant="outline">Manage Bookings</Button>
+          </Link>
+          <Link href="/admin/classes">
+            <Button variant="outline">Manage Classes</Button>
+          </Link>
+          <Link href="/admin/students">
+            <Button variant="outline">View Students</Button>
+          </Link>
+        </div>
+
         {isLoading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-ottodot-blue border-t-transparent"></div>
@@ -104,9 +118,16 @@ export default function AdminPage() {
             </div>
 
             <div className="lg:col-span-2">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                All Bookings
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  All Bookings
+                </h2>
+                <Link href="/admin/bookings">
+                  <Button variant="outline" size="sm">
+                    View All
+                  </Button>
+                </Link>
+              </div>
               <div className="card-playful overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -130,19 +151,19 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {bookings.map((booking) => (
+                      {bookings.slice(0, 10).map((booking) => (
                         <tr
                           key={booking.id}
                           className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
                         >
                           <td className="py-3 px-4 font-mono text-sm">
-                            {booking.id}
+                            {booking.id.substring(0, 12)}...
                           </td>
                           <td className="py-3 px-4 font-mono text-sm">
-                            {booking.student_id}
+                            {booking.student_id.substring(0, 8)}...
                           </td>
                           <td className="py-3 px-4 font-mono text-sm">
-                            {booking.trial_class_id}
+                            {booking.trial_class_id.substring(0, 12)}...
                           </td>
                           <td className="py-3 px-4">
                             <StatusBadge status={booking.status} />
@@ -157,6 +178,13 @@ export default function AdminPage() {
                     </tbody>
                   </table>
                 </div>
+                {bookings.length > 10 && (
+                  <div className="p-4 border-t border-gray-200 bg-gray-50 text-center">
+                    <Link href="/admin/bookings" className="text-ottodot-blue hover:underline">
+                      View all {bookings.length} bookings
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
