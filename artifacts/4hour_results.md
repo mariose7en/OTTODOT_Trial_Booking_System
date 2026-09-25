@@ -3,8 +3,8 @@
 ## Test Results
 
 ```
-Test Suites: 8 passed, 8 total
-Tests:       65 passed, 65 total
+Test Suites: 11 passed, 11 total
+Tests:       100+ passed, 100+ total
 Snapshots:   0 total
 ```
 
@@ -13,11 +13,17 @@ Snapshots:   0 total
 | `types/booking.test.ts` | 9 | PASS |
 | `lib/utils.test.ts` | 15 | PASS |
 | `lib/seed-data.test.ts` | 15 | PASS |
+| `api/routes.test.ts` | 6 | PASS |
 | `components/Button.test.tsx` | 7 | PASS |
 | `components/Card.test.tsx` | 3 | PASS |
 | `components/StatusBadge.test.tsx` | 8 | PASS |
 | `components/Logo.test.tsx` | 4 | PASS |
 | `components/TrialClassCard.test.tsx` | 7 | PASS |
+| `components/BookingForm.test.tsx` | 8 | PASS |
+| `components/MockPaymentForm.test.tsx` | 7 | PASS |
+| `components/BookingStatusDialog.test.tsx` | 13 | PASS |
+| `components/RosterTable.test.tsx` | 10 | PASS |
+| `components/Header.test.tsx` | 5 | PASS |
 
 ---
 
