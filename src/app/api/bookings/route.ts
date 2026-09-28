@@ -32,9 +32,7 @@ function generateBookingId(): string {
   return `BOOKING${random}-${date}`;
 }
 
-export async function GET(request: Request): Promise<
-  NextResponse<ApiResponse<Booking[]>>
-> {
+export async function GET(request: Request): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const query = Object.fromEntries(searchParams.entries());
@@ -72,9 +70,7 @@ export async function GET(request: Request): Promise<
   }
 }
 
-export async function POST(request: Request): Promise<
-  NextResponse<ApiResponse<BookingResponse>>
-> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
     const body = await request.json();
     const validatedData = CreateBookingSchema.parse(body);

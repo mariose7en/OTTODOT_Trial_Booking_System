@@ -25,9 +25,7 @@ function generateTxnId(): string {
   return `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 }
 
-export async function POST(request: Request): Promise<
-  NextResponse<ApiResponse<BookingResponse>>
-> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
     const body = await request.json();
     const validatedData = ConfirmPaymentSchema.parse(body);

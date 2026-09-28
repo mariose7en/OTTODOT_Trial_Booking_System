@@ -11,7 +11,7 @@ const BookingIdSchema = z.object({
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
-): Promise<NextResponse<ApiResponse<Booking>>> {
+): Promise<NextResponse> {
   try {
     const { id } = params;
 

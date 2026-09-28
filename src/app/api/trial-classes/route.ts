@@ -6,7 +6,7 @@ import { DatabaseError, createErrorResponse } from "@/lib/errors";
 
 export async function GET(
   request: Request
-): Promise<NextResponse<ApiResponse<TrialClassWithSeats[]>>> {
+): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const query = Object.fromEntries(searchParams.entries());

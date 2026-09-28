@@ -58,9 +58,7 @@ export const ConfirmPaymentSchema = z.object({
     .string()
     .uuid("Invalid booking ID format"),
   
-  payment_result: z.enum(["success", "failure"], {
-    errorMap: () => ({ message: "Payment result must be 'success' or 'failure'" }),
-  }),
+  payment_result: z.enum(["success", "failure"]),
 });
 
 export const TrialClassQuerySchema = z.object({

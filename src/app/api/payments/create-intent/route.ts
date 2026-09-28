@@ -48,7 +48,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const student = booking.students as { first_name: string; last_name: string };
+    const studentData = booking.students as { first_name: string; last_name: string }[];
+    const student = studentData[0];
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: TRIAL_CLASS_PRICE,

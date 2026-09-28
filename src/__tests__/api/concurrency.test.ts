@@ -99,7 +99,7 @@ describe("Concurrency Tests - Last Seat Race Condition", () => {
       });
 
       expect(result.error).toBeTruthy();
-      expect(result.error.message).toBe("Database connection error");
+      expect(result.error?.message).toBe("Database connection error");
     });
   });
 

@@ -330,6 +330,60 @@ See [artifacts/seed.sql](artifacts/seed.sql) for full schema and data.
 - Class management (create, delete)
 - Student management
 
+## Deployment
+
+### Docker
+
+```bash
+# Start all services (app + PostgreSQL + Redis)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+The app will be available at `http://localhost:3000`.
+
+### Vercel
+
+1. Push to GitHub
+2. Import repository on [vercel.com](https://vercel.com)
+3. Configure environment variables
+4. Deploy
+
+```bash
+# Or deploy with Vercel CLI
+npm i -g vercel
+vercel --prod
+```
+
+### Environment Variables for Production
+
+```env
+# Required
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional
+STRIPE_SECRET_KEY=your_stripe_key
+SENTRY_DSN=your_sentry_dsn
+```
+
+## Monitoring
+
+### Sentry (Optional)
+
+Add to `.env.local`:
+
+```env
+SENTRY_DSN=https://xxx@sentry.io/xxx
+SENTRY_ORG=your-org
+SENPLOY_PROJECT=your-project
+```
+
 ## AI Usage
 
 This project was built with assistance from:
@@ -351,6 +405,7 @@ See [artifacts/AI_USAGE.md](artifacts/AI_USAGE.md) for details.
 
 - [Setup Guide](artifacts/setup.md)
 - [Test Guide](artifacts/test.md)
+- [API Documentation](artifacts/api.md)
 - [AI Usage](artifacts/AI_USAGE.md)
 - [Complete Plan](artifacts/complete_plan.md)
 - [Sprint Breakdown](artifacts/todo_sprint_core.md)

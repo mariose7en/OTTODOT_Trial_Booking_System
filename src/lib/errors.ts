@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 export type ErrorCode =
@@ -45,9 +46,9 @@ export class BookingError extends AppError {
 export class ValidationError extends AppError {
   constructor(zodError: ZodError) {
     const fields: Record<string, string> = {};
-    zodError.errors.forEach((err) => {
-      const field = err.path.join(".");
-      fields[field] = err.message;
+    zodError.issues.forEach((issue) => {
+      const field = issue.path.join(".");
+      fields[field] = issue.message;
     });
 
     super({
@@ -163,14 +164,14 @@ export function handleApiError(error: unknown): {
 export function createErrorResponse(
   error: unknown,
   context?: string
-): Response {
+): NextResponse {
   const errorResponse = handleApiError(error);
   
   if (context) {
     console.error(`[${context}]`, errorResponse.error);
   }
 
-  return Response.json(errorResponse, {
+  return NextResponse.json(errorResponse, {
     status: errorResponse.error.statusCode,
   });
 }

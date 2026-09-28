@@ -11,7 +11,7 @@ import {
 export async function GET(
   request: Request,
   { params }: { params: { class_id: string } }
-): Promise<NextResponse<ApiResponse<RosterResponse>>> {
+): Promise<NextResponse> {
   try {
     const { class_id } = params;
 
@@ -19,7 +19,7 @@ export async function GET(
 
     const { data: trialClass, error: classError } = await supabase
       .from("trial_classes")
-      .select("id, class_name, max_seats")
+      .select("id, class_name, subject, start_time, max_seats")
       .eq("id", validatedParams.class_id)
       .single();
 
@@ -47,12 +47,8 @@ export async function GET(
     }
 
     const confirmedStudents = (bookings || []).map((booking) => {
-      const student = booking.students as {
-        id: string;
-        first_name: string;
-        last_name: string;
-        email: string;
-      };
+      const studentData = booking.students as { id: string; first_name: string; last_name: string; email: string }[];
+      const student = studentData[0];
       return {
         student_id: student.id,
         first_name: student.first_name,
@@ -68,8 +64,11 @@ export async function GET(
       data: {
         class_id: trialClass.id,
         class_name: trialClass.class_name,
+        subject: trialClass.subject,
+        start_time: trialClass.start_time,
         confirmed_students: confirmedStudents,
         seats_remaining: seatsRemaining,
+        max_seats: trialClass.max_seats,
       },
     });
   } catch (error) {

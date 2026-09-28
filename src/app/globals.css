@@ -21,9 +21,22 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Nunito', sans-serif;
 }
 
+/* Focus visible for accessibility */
+*:focus-visible {
+  @apply outline-2 outline-offset-2 outline-ottodot-blue;
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  @apply absolute -top-10 left-0 bg-ottodot-blue text-white px-4 py-2 z-50;
+  @apply focus:top-0 transition-top duration-200;
+}
+
 @layer components {
   .btn-ottodot {
-    @apply inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply min-h-[44px] min-w-[44px]; /* Touch target size */
   }
 
   .btn-ottodot-yellow {
@@ -43,7 +56,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .card-playful {
-    @apply rounded-2xl bg-white p-6 shadow-lg border-2 border-transparent transition-all duration-300 hover:border-ottodot-blue hover:shadow-xl;
+    @apply rounded-2xl bg-white p-4 sm:p-6 shadow-lg border-2 border-transparent;
+    @apply transition-all duration-300 hover:border-ottodot-blue hover:shadow-xl;
   }
 
   .status-confirmed {
@@ -73,6 +87,22 @@ h1, h2, h3, h4, h5, h6 {
   .seat-full {
     @apply text-ottodot-red font-semibold;
   }
+
+  /* Mobile-optimized form inputs */
+  .input-mobile {
+    @apply w-full px-4 py-3 text-base;
+    @apply border border-gray-300 rounded-lg;
+    @apply focus:ring-2 focus:ring-ottodot-blue focus:border-transparent;
+    @apply min-h-[44px]; /* Touch target */
+  }
+
+  /* Mobile-optimized select */
+  .select-mobile {
+    @apply w-full px-4 py-3 text-base;
+    @apply border border-gray-300 rounded-lg bg-white;
+    @apply focus:ring-2 focus:ring-ottodot-blue focus:border-transparent;
+    @apply min-h-[44px]; /* Touch target */
+  }
 }
 
 @layer utilities {
@@ -82,5 +112,55 @@ h1, h2, h3, h4, h5, h6 {
 
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-ottodot-blue to-ottodot-green;
+  }
+
+  /* Mobile-first responsive utilities */
+  .container-mobile {
+    @apply w-full max-w-md mx-auto px-4;
+  }
+
+  .container-tablet {
+    @apply w-full max-w-2xl mx-auto px-4 sm:px-6;
+  }
+
+  .container-desktop {
+    @apply w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-ottodot {
+    @apply border-2 border-current;
+  }
+  
+  .card-playful {
+    @apply border-2 border-gray-400;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    @apply hidden;
+  }
+  
+  body {
+    @apply bg-white;
+  }
+  
+  .card-playful {
+    @apply shadow-none border border-gray-300;
   }
 }
