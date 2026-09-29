@@ -438,7 +438,7 @@ describe("BK-API GET routes (L3)", () => {
     });
 
     const res = await bookingByIdGET(new Request("http://x"), {
-      params: { id: "BOOKING001-20260928" },
+      params: Promise.resolve({ id: "BOOKING001-20260928" }),
     });
     const body = await res.json();
     expect(res.status).toBe(200);
@@ -450,7 +450,7 @@ describe("BK-API GET routes (L3)", () => {
 
   test("BK-API-019b: a malformed booking id still → 400 with the id field", async () => {
     const res = await bookingByIdGET(new Request("http://x"), {
-      params: { id: "not-a-booking-id" },
+      params: Promise.resolve({ id: "not-a-booking-id" }),
     });
     const body = await res.json();
     expect(res.status).toBe(400);
@@ -460,7 +460,7 @@ describe("BK-API GET routes (L3)", () => {
 
   test("BK-API-020: GET /api/bookings/<unknown uuid> → 404 NOT_FOUND", async () => {
     const res = await bookingByIdGET(new Request("http://x"), {
-      params: { id: UUID },
+      params: Promise.resolve({ id: UUID }),
     });
     const body = await res.json();
     expect(res.status).toBe(404);

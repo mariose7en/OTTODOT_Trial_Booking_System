@@ -19,15 +19,16 @@ This system handles trial class bookings with focus on correctness under critica
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Next.js 14 (App Router), React 18, TypeScript |
+| **Frontend** | Next.js 16.3.7 (App Router), React 18, TypeScript |
 | **Styling** | Tailwind CSS with Ottodot brand colors |
-| **Backend** | Next.js API Routes |
+| **Backend** | Next.js API Routes, Supabase RPC |
 | **Database** | Supabase (PostgreSQL) |
 | **Auth** | Supabase Auth (Email/Password, Magic Link) |
-| **Payment** | Stripe (optional), Mock Payment |
+| **Payment** | Stripe (optional), Mock Payment (PayMock) |
 | **Email** | Nodemailer with SMTP |
-| **Testing** | Jest, React Testing Library, SWC |
-| **Deployment** | Vercel (ready) |
+| **Testing** | Jest, React Testing Library, SWC, 559 tests (43 suites) |
+| **Deployment** | Vercel, Docker |
+| **Build Tool** | Turbopack (Next.js 16) |
 
 ## Architecture
 
@@ -179,9 +180,10 @@ OTTODOT_Trial_Booking_System/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - Supabase account (free tier works)
-- Stripe account (optional, for payment processing)
+- Stripe account (optional, for live payment processing)
+- Git
 
 ### Installation
 
@@ -198,10 +200,10 @@ cp .env.local.example .env.local
 # Edit .env.local with your credentials:
 # - NEXT_PUBLIC_SUPABASE_URL
 # - NEXT_PUBLIC_SUPABASE_ANON_KEY
-# - STRIPE_SECRET_KEY (optional)
+# - STRIPE_SECRET_KEY (optional, required for "stripe" provider)
 # - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (optional)
 # - PAYMENT_PROVIDER (optional: "mock" | "stripe", default "mock" in dev/test)
-# - SMTP_HOST, SMTP_USER, SMTP_PASS (for emails)
+# - SMTP_HOST, SMTP_USER, SMTP_PASS (for emails, required for notifications)
 
 # Run database schema
 # Copy artifacts/seed.sql to Supabase SQL Editor and run

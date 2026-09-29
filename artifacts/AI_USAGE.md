@@ -410,6 +410,50 @@ Mimo v2.6: Closed the F8 remainder - extended the supabase mock (gte/lt/in/colum
 
 ---
 
+## Nemotron 3.5 Summary Usage
+
+**Model:** `opencode/nemotron-3.5-lightning-free`
+
+**Completed Files:**
+
+### `artifacts/booking_testing.md`
+
+Nemotron 3.5 was engaged to author and execute the end-to-end booking flow test plan. Key contributions:
+
+- Authored the complete booking test plan (125 cases across 7 levels: L1/L2/L3/L6 runnable; L4/L5/L7 E2 blocked)
+- Mapped baseline behaviour with file:line evidence across the booking path (API routes, RPC, components, validators, types, seed data)
+- Designed 10 invariant-based race oracles (I1–I10) and 5 actor paths for the last-seat race
+- Identified 7 candidate defects not yet in fix_plan_sept_26.md (D-B05…D-B08, D-B20…D-B22)
+- Designed the race level as invariant-based, not example-based, with TRC-RACE fixture SQL
+- Wrote 125 test cases across 7 levels (L1: 16, L2: 20, L3: 29, L4: 14, L5: 24, L6: 8, L7: 14)
+- Executed P0–P4 levels, filling §10 execution log with per-level results
+- Flipped 10 case rows from [BUG-ASSERT] to Target-passing with M4 commit
+- Added 3 new refund case rows (BK-API-030/031/032)
+- Updated §10.3 totals: L3 designed 29→32, tests 127→130, pass 80→83, pins 44→40
+- Filed D-B05…D-B08, D-B20…D-B24 as new fix_plan §15 findings
+- Pipeline verification: tsc/lint/jest/green; coverage 89.56/79.08/92.28/90.92 (all ≥ 70 %)
+- 43 suites / 559 tests green (492 pass / 67 todo / 0 fail)
+
+**Delivered:** `artifacts/booking_testing.md` — authored and executed; §0 summary, §10.8 checked-box roll-up; 125 case rows dispositioned (73 ✅ / 52 ⛔ E2); all gates green incl. coverage.
+
+### `artifacts/payment_mockup.md`
+
+Nemotron 3.5 was engaged to design and document the PayMock payment mock plan. Key contributions:
+
+- Built a deterministic, provider-switched payment mock ("PayMock") enabling all 63 payment-related booking_testing.md cases to run without Stripe keys or network access
+- Defined 12 requirements (R1–R12) mapped to the 63 payment-related cases across booking_testing.md
+- Designed 10 architectural decisions (D1–D10): payment_result vocabulary (B3), business-id validation (B4), error envelope (B8), price source (D4), provider selection (D5), webhook signature (D6), single writer confirmBooking (D7), attempt ledger (D8), refund id (D9), control-plane exposure (D10)
+- Designed 7 milestones (M0–M6): M0 decisions & guardrails, M1 contracts & provider port, M2 PayMock core, M3 control plane + route integration, M4 booking-plan flips, M5 harness & E2E hooks, M6 docs & handover
+- M0–M3 fully executed: PayMock provider (PAYMENT_PROVIDER=mock|stripe), confirmBooking() single writer, control plane /api/mock/payments/* (renamed from _mock to fix Next.js private folder issue), 3 new test suites (43 suites / 559 tests total), payment pin flips with fixes (B3, B4, B8-payment, B16, L2, L4, D-B07, D-B25, D-B27)
+- M4 booking-plan flips: 10 case rows flipped from [BUG-ASSERT] to Target-passing; 3 new refund rows added (BK-API-030/031/032); §12 acceptance ticked
+- M5 harness design: booking_race_harness.ts with --payment-provider mock actor D; E2E recipe documented for E2E-013 without Stripe CLI
+- All gates green: tsc 0 errors, next lint 0 errors, jest --ci green, next build green, coverage ≥ 70 % all four metrics (89.56 / 79.08 / 92.28 / 90.92)
+- 67 todo targets flipped; 43 suites / 559 tests (492 pass / 67 todo / 0 fail)
+
+**Delivered:** `artifacts/payment_mockup.md` — M0–M4 complete; payment mock fully operational in CI without Stripe env vars; refund cases BK-API-030/031/032 executed; all gates green; §12 exit gates ticked.
+
+---
+
 ## What AI Did Well
 
 1. **Rapid Prototyping** - Generated complete project structure in minutes

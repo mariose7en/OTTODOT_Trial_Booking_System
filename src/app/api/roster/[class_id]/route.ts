@@ -10,10 +10,10 @@ import {
 
 export async function GET(
   request: Request,
-  { params }: { params: { class_id: string } }
+  { params }: { params: Promise<{ class_id: string }> }
 ): Promise<NextResponse> {
   try {
-    const { class_id } = params;
+    const { class_id } = await params;
 
     const validatedParams = RosterParamsSchema.parse({ class_id });
 

@@ -178,8 +178,8 @@ describe("LR-UT useAuth() contract", () => {
 });
 
 describe("LR-UT server helpers (lib/auth/server.ts)", () => {
-  test("LR-UT-009: createServerSupabaseClient wires cookie get/set/remove adapters", () => {
-    createServerSupabaseClient();
+  test("LR-UT-009: createServerSupabaseClient wires cookie get/set/remove adapters", async () => {
+    await createServerSupabaseClient();
     expect(createServerClient).toHaveBeenCalledTimes(1);
     const [, , options] = (createServerClient as jest.Mock).mock.calls[0];
     expect(typeof options.cookies.get).toBe("function");
@@ -187,14 +187,14 @@ describe("LR-UT server helpers (lib/auth/server.ts)", () => {
     expect(typeof options.cookies.remove).toBe("function");
   });
 
-  test("LR-UT-010: cookie set failures are swallowed (no throw in RSC context)", () => {
+  test("LR-UT-010: cookie set failures are swallowed (no throw in RSC context)", async () => {
     (cookies as unknown as jest.Mock).mockReturnValue({
       get: jest.fn(),
       set: jest.fn(() => {
         throw new Error("Cookies can only be modified in a Server Action");
       }),
     });
-    createServerSupabaseClient();
+    await createServerSupabaseClient();
     const [, , options] = (createServerClient as jest.Mock).mock.calls[0];
     expect(() =>
       options.cookies.set("sb-test", "value", { path: "/" })
