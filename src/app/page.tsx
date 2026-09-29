@@ -72,7 +72,7 @@ export default function Home() {
                 Track Progress
               </h3>
               <p className="text-gray-600">
-                Monitor your child's improvement with detailed reports.
+                Monitor your child&apos;s improvement with detailed reports.
               </p>
             </div>
           </div>

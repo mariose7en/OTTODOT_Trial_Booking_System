@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
 import { supabase } from "@/lib/supabase";
-import { createErrorResponse } from "@/lib/errors";
+import {
+  BookingError,
+  DatabaseError,
+  NotFoundError,
+  createErrorResponse,
+  rethrowIfDatabaseError,
+} from "@/lib/errors";
+import { bookingIdSchema } from "@/lib/validations/ids";
+import { getPaymentProvider } from "@/lib/payments/provider";
+import { PaymentAttemptStatus } from "@/types/booking";
 import { z } from "zod";
 
 const RefundSchema = z.object({
-  booking_id: z.string().uuid("Invalid booking ID format"),
+  booking_id: bookingIdSchema,
   reason: z.string().optional(),
 });
+
+const PAYMENT_INTENT_ID = /^pi_/;
 
 export async function POST(request: Request) {
   try {
@@ -25,35 +35,34 @@ export async function POST(request: Request) {
       .eq("id", booking_id)
       .single();
 
+    rethrowIfDatabaseError(bookingError);
     if (bookingError || !booking) {
-      return NextResponse.json(
-        { success: false, error: "Booking not found" },
-        { status: 404 }
-      );
+      throw new NotFoundError("Booking", booking_id);
     }
 
     if (booking.status !== "CONFIRMED") {
-      return NextResponse.json(
-        { success: false, error: "Only confirmed bookings can be refunded" },
-        { status: 400 }
-      );
+      throw new BookingError("Only confirmed bookings can be refunded");
     }
 
-    // Find successful payment attempt with Stripe payment intent
+    // Find the successful attempt that carries a real payment intent (D9):
+    // legacy rows still hold our synthetic TXN-… id, which Stripe rejects.
     const successfulPayment = booking.payment_attempts?.find(
-      (attempt: any) => attempt.status === "SUCCESS" && attempt.txn_id
+      (attempt: any) => attempt.status === PaymentAttemptStatus.Success && attempt.txn_id
     );
 
     if (!successfulPayment) {
-      return NextResponse.json(
-        { success: false, error: "No successful payment found for this booking" },
-        { status: 400 }
+      throw new BookingError("No successful payment found for this booking");
+    }
+
+    if (!PAYMENT_INTENT_ID.test(String(successfulPayment.txn_id))) {
+      throw new BookingError(
+        "No payment intent recorded for this booking"
       );
     }
 
-    // Create refund in Stripe
-    const refund = await stripe.refunds.create({
-      payment_intent: successfulPayment.txn_id,
+    // Create the refund through the provider port (mock or Stripe, R11)
+    const refund = await getPaymentProvider().refund({
+      paymentIntentId: successfulPayment.txn_id,
       reason: "requested_by_customer",
       metadata: {
         booking_id,
@@ -61,27 +70,31 @@ export async function POST(request: Request) {
       },
     });
 
-    // Update booking status
+    // Update booking status — part of the same unit of work (D8)
     const { error: updateError } = await supabase
       .from("bookings")
       .update({ status: "REFUNDED" })
       .eq("id", booking_id);
 
     if (updateError) {
-      console.error("Error updating booking status:", updateError);
+      throw new DatabaseError(
+        "Failed to update booking status",
+        updateError as unknown as Error
+      );
     }
 
-    // Record refund attempt
+    // D9: the refund moves the successful attempt to REFUNDED — never a
+    // second SUCCESS row, so the ledger keeps showing one payment.
     const { error: attemptError } = await supabase
       .from("payment_attempts")
-      .insert({
-        booking_id,
-        status: "SUCCESS",
-        txn_id: refund.id,
-      });
+      .update({ status: PaymentAttemptStatus.Refunded })
+      .eq("id", successfulPayment.id);
 
     if (attemptError) {
-      console.error("Error recording refund attempt:", attemptError);
+      throw new DatabaseError(
+        "Failed to record refund in the payment ledger",
+        attemptError as unknown as Error
+      );
     }
 
     return NextResponse.json({

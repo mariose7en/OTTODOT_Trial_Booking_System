@@ -145,12 +145,30 @@ describe("BookingStatusDialog component", () => {
       />
     );
 
-    // Click the backdrop (the fixed overlay)
-    const backdrop = document.querySelector(".fixed.inset-0.bg-black\\/50");
-    if (backdrop) {
-      fireEvent.click(backdrop);
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
-    }
+    // Click the backdrop (the fixed overlay) — assert it exists first, so this
+    // can never pass vacuously when the selector stops matching
+    const backdrop = document.querySelector<HTMLElement>(
+      ".fixed.inset-0.bg-black\\/50"
+    );
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop as HTMLElement);
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("should render a generic message for a status it does not know (REFUNDED is in the DB CHECK but not in BookingStatus)", () => {
+    render(
+      <BookingStatusDialog
+        isOpen={true}
+        status={"REFUNDED" as BookingStatus}
+        bookingId="BOOKING001"
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(screen.getByText("Booking Update")).toBeInTheDocument();
+    expect(screen.getByText("Your booking has been updated.")).toBeInTheDocument();
+    expect(screen.getByText("BOOKING001")).toBeInTheDocument();
+    expect(screen.getByText("Close")).toBeInTheDocument();
   });
 
   it("should show Try Again button for payment failed status", () => {

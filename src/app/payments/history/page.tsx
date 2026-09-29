@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TRIAL_CLASS_PRICE_DISPLAY } from "@/lib/payments/price";
 
 interface PaymentRecord {
   id: string;
@@ -157,7 +158,7 @@ export default function PaymentHistoryPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        $20.00
+                        {TRIAL_CLASS_PRICE_DISPLAY}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge status={payment.status as any} />

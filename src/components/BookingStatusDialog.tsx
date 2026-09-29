@@ -13,16 +13,28 @@ export interface BookingStatusDialogProps {
   onClose: () => void;
 }
 
-const statusConfig: Record<
-  BookingStatus,
-  {
-    title: string;
-    message: string;
-    icon: string;
-    bgColor: string;
-    iconColor: string;
-  }
-> = {
+interface StatusConfig {
+  title: string;
+  message: string;
+  icon: string;
+  bgColor: string;
+  iconColor: string;
+}
+
+/**
+ * Fallback for statuses the dialog does not know about (e.g. REFUNDED, which
+ * the DB CHECK allows but `BookingStatus` omits, or an RPC-only code) — without
+ * it `statusConfig[status]` is undefined and the render crashes.
+ */
+const fallbackConfig: StatusConfig = {
+  title: "Booking Update",
+  message: "Your booking has been updated.",
+  icon: "ℹ️",
+  bgColor: "bg-gray-50",
+  iconColor: "text-gray-600",
+};
+
+const statusConfig: Record<string, StatusConfig> = {
   [BookingStatus.PendingPayment]: {
     title: "Booking Created!",
     message: "Please complete payment to confirm your booking.",
@@ -77,7 +89,7 @@ export function BookingStatusDialog({
 }: BookingStatusDialogProps) {
   if (!isOpen) return null;
 
-  const config = statusConfig[status];
+  const config = statusConfig[status] ?? fallbackConfig;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

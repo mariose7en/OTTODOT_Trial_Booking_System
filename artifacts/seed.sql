@@ -6,6 +6,8 @@
 -- =====================================================
 -- DROP EXISTING TABLES (in correct order)
 -- =====================================================
+DROP TABLE IF EXISTS login_attempts CASCADE;
+DROP TABLE IF EXISTS registrations CASCADE;
 DROP TABLE IF EXISTS payment_details CASCADE;
 DROP TABLE IF EXISTS payment_headers CASCADE;
 DROP TABLE IF EXISTS payment_attempts CASCADE;
@@ -47,6 +49,11 @@ CREATE TABLE students (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX idx_students_parent ON students(parent_id);
+
+-- Email-match support: lets registrations/login_attempts enforce that their
+-- email column equals the email of the linked parent/student row (composite FKs)
+ALTER TABLE parents ADD CONSTRAINT uq_parents_id_email UNIQUE (id, email);
+ALTER TABLE students ADD CONSTRAINT uq_students_id_email UNIQUE (id, email);
 
 -- =====================================================
 -- CLASSES TABLE (base class definition)
@@ -110,7 +117,12 @@ CREATE INDEX idx_bookings_status ON bookings(status);
 CREATE TABLE payment_attempts (
     id TEXT PRIMARY KEY,
     booking_id TEXT REFERENCES bookings(id) ON DELETE CASCADE,
-    status TEXT NOT NULL CHECK (status IN ('INITIATED', 'SUCCESS', 'FAILED')),
+    -- 'REFUNDED' added 2026-09-29 (payment_mockup D9): a refund must move the
+    -- original SUCCESS row to REFUNDED instead of inserting a second SUCCESS.
+    -- Existing databases: ALTER TABLE payment_attempts DROP CONSTRAINT payment_attempts_status_check;
+    --                     ALTER TABLE payment_attempts ADD CONSTRAINT payment_attempts_status_check
+    --                         CHECK (status IN ('INITIATED', 'SUCCESS', 'FAILED', 'REFUNDED'));
+    status TEXT NOT NULL CHECK (status IN ('INITIATED', 'SUCCESS', 'FAILED', 'REFUNDED')),
     txn_id TEXT,
     amount DECIMAL(10,2),
     currency TEXT DEFAULT 'USD',
@@ -156,6 +168,76 @@ CREATE TABLE payment_details (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX idx_payment_details_header ON payment_details(payment_header_id);
+
+-- =====================================================
+-- REGISTRATIONS TABLE (signup / email-verification records)
+-- email MUST match the linked parents/students row (FK-enforced)
+-- =====================================================
+CREATE TABLE registrations (
+    id              TEXT PRIMARY KEY,                     -- REG-001 ...
+    account_type    TEXT NOT NULL CHECK (account_type IN ('PARENT', 'STUDENT')),
+    parent_id       TEXT,                                 -- set iff account_type = 'PARENT'
+    student_id      TEXT,                                 -- set iff account_type = 'STUDENT'
+    email           TEXT NOT NULL,                        -- == linked row's email (FK-enforced)
+    auth_user_id    UUID,                                 -- auth.users.id after confirm (F4)
+    status          TEXT NOT NULL DEFAULT 'PENDING'
+        CHECK (status IN ('PENDING', 'VERIFIED', 'REJECTED', 'EXPIRED')),
+    verification_token TEXT,
+    requested_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    verified_at     TIMESTAMPTZ,
+    expires_at      TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_reg_target CHECK (
+        (account_type = 'PARENT'  AND parent_id IS NOT NULL AND student_id IS NULL) OR
+        (account_type = 'STUDENT' AND student_id IS NOT NULL AND parent_id IS NULL)
+    ),
+    CONSTRAINT fk_reg_parent_email FOREIGN KEY (parent_id, email)
+        REFERENCES parents (id, email) ON DELETE CASCADE,
+    CONSTRAINT fk_reg_student_email FOREIGN KEY (student_id, email)
+        REFERENCES students (id, email) ON DELETE CASCADE
+);
+CREATE INDEX idx_registrations_email  ON registrations(email);
+CREATE INDEX idx_registrations_status ON registrations(status);
+CREATE UNIQUE INDEX uq_registrations_auth_user ON registrations(auth_user_id)
+    WHERE auth_user_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_registrations_pending ON registrations(email)
+    WHERE status = 'PENDING';        -- at most one open signup per email
+
+-- =====================================================
+-- LOGIN ATTEMPTS TABLE (append-only login audit)
+-- email MUST match the linked parents/students row (FK-enforced)
+-- =====================================================
+CREATE TABLE login_attempts (
+    id              TEXT PRIMARY KEY,                     -- LOG-001 ...
+    account_type    TEXT NOT NULL CHECK (account_type IN ('PARENT', 'STUDENT')),
+    parent_id       TEXT,
+    student_id      TEXT,
+    email           TEXT NOT NULL,                        -- == linked row's email (FK-enforced)
+    outcome         TEXT NOT NULL
+        CHECK (outcome IN ('SUCCESS', 'FAILED', 'LOCKED', 'UNVERIFIED')),
+    failure_reason  TEXT,                                 -- e.g. 'Invalid login credentials'
+    auth_user_id    UUID,
+    ip_address      TEXT,
+    user_agent      TEXT,
+    attempted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_login_target CHECK (
+        (account_type = 'PARENT'  AND parent_id IS NOT NULL AND student_id IS NULL) OR
+        (account_type = 'STUDENT' AND student_id IS NOT NULL AND parent_id IS NULL)
+    ),
+    CONSTRAINT fk_login_parent_email FOREIGN KEY (parent_id, email)
+        REFERENCES parents (id, email) ON DELETE CASCADE,
+    CONSTRAINT fk_login_student_email FOREIGN KEY (student_id, email)
+        REFERENCES students (id, email) ON DELETE CASCADE
+);
+CREATE INDEX idx_login_attempts_email   ON login_attempts(email);
+CREATE INDEX idx_login_attempts_outcome ON login_attempts(outcome);
+CREATE INDEX idx_login_attempts_time    ON login_attempts(attempted_at);
+
+-- OPTIONAL (Supabase only, after Fix Sprint F4 adds parents.auth_user_id):
+--   ALTER TABLE parents ADD COLUMN auth_user_id UUID UNIQUE REFERENCES auth.users(id);
+--   UPDATE parents p SET auth_user_id = au.id FROM auth.users au WHERE au.email = p.email;
+--   UPDATE registrations r SET auth_user_id = au.id FROM auth.users au WHERE au.email = r.email;
 
 -- =====================================================
 -- STORED PROCEDURE: confirm_trial_booking
@@ -289,6 +371,27 @@ INSERT INTO payment_details (id, payment_header_id, description, quantity, unit_
     ('PDT-003', 'PHD-003', 'Trial Class: SCIENCE TRIAL - OCT 2', 1, 20.00, 20.00, 'SCIENCE TRIAL - OCT 2', '2026-10-02 14:00:00+08'),
     ('PDT-004', 'PHD-004', 'Trial Class: MATH TRIAL - OCT 1', 1, 20.00, 20.00, 'MATH TRIAL - OCT 1', '2026-10-01 10:00:00+08');
 
+-- Registrations - matched 1:1 to the 3 parents + 4 students seeded above
+INSERT INTO registrations
+    (id, account_type, parent_id, student_id, email, status, requested_at, verified_at, expires_at) VALUES
+    ('REG-001', 'PARENT',  'PAR-001', NULL,      'alice@example.com',   'VERIFIED', now() - interval '30 days', now() - interval '30 days', NULL),
+    ('REG-002', 'PARENT',  'PAR-002', NULL,      'bob@example.com',     'VERIFIED', now() - interval '30 days', now() - interval '30 days', NULL),
+    ('REG-003', 'PARENT',  'PAR-003', NULL,      'carol@example.com',   'PENDING',  now() - interval '2 days',  NULL,                       now() + interval '5 days'),
+    ('REG-004', 'STUDENT', NULL,      'STU-001', 'charlie@example.com', 'VERIFIED', now() - interval '30 days', now() - interval '30 days', NULL),
+    ('REG-005', 'STUDENT', NULL,      'STU-002', 'daisy@example.com',   'VERIFIED', now() - interval '30 days', now() - interval '30 days', NULL),
+    ('REG-006', 'STUDENT', NULL,      'STU-003', 'ethan@example.com',   'VERIFIED', now() - interval '30 days', now() - interval '30 days', NULL),
+    ('REG-007', 'STUDENT', NULL,      'STU-004', 'fiona@example.com',   'VERIFIED', now() - interval '30 days', now() - interval '30 days', NULL);
+
+-- Login attempts - only emails that exist in parents/students
+INSERT INTO login_attempts
+    (id, account_type, parent_id, student_id, email, outcome, failure_reason, ip_address, user_agent, attempted_at) VALUES
+    ('LOG-001', 'PARENT',  'PAR-001', NULL,      'alice@example.com',   'SUCCESS',     NULL,                        '192.168.1.10', 'Mozilla/5.0 (Windows NT 10.0)', now() - interval '1 day'),
+    ('LOG-002', 'PARENT',  'PAR-002', NULL,      'bob@example.com',     'SUCCESS',     NULL,                        '192.168.1.11', 'Mozilla/5.0 (Macintosh)',       now() - interval '12 hours'),
+    ('LOG-003', 'PARENT',  'PAR-001', NULL,      'alice@example.com',   'FAILED',      'Invalid login credentials', '192.168.1.10', 'Mozilla/5.0 (Windows NT 10.0)', now() - interval '2 hours'),
+    ('LOG-004', 'PARENT',  'PAR-003', NULL,      'carol@example.com',   'UNVERIFIED',  'Email not confirmed',       '192.168.1.12', 'Mozilla/5.0 (iPhone)',          now() - interval '1 hour'),
+    ('LOG-005', 'STUDENT', NULL,      'STU-001', 'charlie@example.com', 'SUCCESS',     NULL,                        '192.168.1.10', 'Mozilla/5.0 (Windows NT 10.0)', now() - interval '6 hours'),
+    ('LOG-006', 'STUDENT', NULL,      'STU-003', 'ethan@example.com',   'FAILED',      'Invalid login credentials', '192.168.1.20', 'Mozilla/5.0 (Linux)',           now() - interval '30 minutes');
+
 -- =====================================================
 -- VERIFICATION QUERIES
 -- =====================================================
@@ -307,3 +410,24 @@ INSERT INTO payment_details (id, payment_header_id, description, quantity, unit_
 -- FROM bookings b
 -- LEFT JOIN payment_attempts pa ON pa.booking_id = b.id
 -- ORDER BY b.registered_at DESC;
+
+-- Check registration/email match (V1/V2) - both must return 0 rows
+-- SELECT r.id, r.email, p.email AS parent_email
+-- FROM registrations r
+-- LEFT JOIN parents p ON p.id = r.parent_id AND p.email = r.email
+-- WHERE r.account_type = 'PARENT' AND p.id IS NULL;
+-- SELECT r.id, r.email, s.email AS student_email
+-- FROM registrations r
+-- LEFT JOIN students s ON s.id = r.student_id AND s.email = r.email
+-- WHERE r.account_type = 'STUDENT' AND s.id IS NULL;
+
+-- Check login attempt orphans (V3) - must return 0 rows
+-- SELECT l.id, l.email FROM login_attempts l
+-- LEFT JOIN parents p ON p.id = l.parent_id AND p.email = l.email
+-- LEFT JOIN students s ON s.id = l.student_id AND s.email = l.email
+-- WHERE (l.account_type = 'PARENT' AND p.id IS NULL)
+--    OR (l.account_type = 'STUDENT' AND s.id IS NULL);
+
+-- Check auth seed counts (V4): registrations = 7 (6 VERIFIED, 1 PENDING), login_attempts = 6
+-- SELECT status, count(*) FROM registrations GROUP BY status;
+-- SELECT outcome, count(*) FROM login_attempts GROUP BY outcome;

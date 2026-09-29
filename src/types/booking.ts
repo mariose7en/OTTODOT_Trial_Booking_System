@@ -11,6 +11,7 @@ export enum PaymentAttemptStatus {
   Initiated = "INITIATED",
   Success = "SUCCESS",
   Failed = "FAILED",
+  Refunded = "REFUNDED",
 }
 
 export interface Parent {

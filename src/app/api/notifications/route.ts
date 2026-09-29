@@ -6,7 +6,7 @@ import {
   paymentFailedTemplate,
   bookingReminderTemplate,
 } from "@/lib/email-templates";
-import { createErrorResponse } from "@/lib/errors";
+import { createErrorResponse, rethrowIfDatabaseError } from "@/lib/errors";
 
 export async function POST(request: Request) {
   try {
@@ -45,7 +45,11 @@ export async function POST(request: Request) {
       .eq("id", booking_id)
       .single();
 
-    if (bookingError || !booking) {
+    // D-B27: a database failure is not a missing booking — rethrow so it
+    // surfaces as DATABASE_ERROR instead of a 404 that hides the outage.
+    rethrowIfDatabaseError(bookingError);
+
+    if (!booking) {
       return NextResponse.json(
         { success: false, error: "Booking not found" },
         { status: 404 }

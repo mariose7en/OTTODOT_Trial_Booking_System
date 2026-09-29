@@ -8,11 +8,15 @@
 npm test
 ```
 
-Expected output:
+Expected output (measured 2026-09-29, after `payment_mockup.md` M0–M3):
 ```
-Test Suites: 8 passed, 8 total
-Tests:       65 passed, 65 total
+Test Suites: 43 passed, 43 total
+Tests:       559 total — 492 passed, 67 todo
 ```
+
+The 67 `todo` cases are targets for open defects: today's behaviour is pinned with `[BUG-ASSERT]` and the desired
+assertion is written as `test.todo` until the fix lands (`artifacts/booking_testing.md` §10). Seven of them were
+flipped to real assertions in this pass (B3, B4, L2, D-B07, D-B25, D-B27, plus the paymentsStripe L2/L4 pins).
 
 ### 1.2 Run Tests in Watch Mode
 
@@ -47,12 +51,63 @@ npx jest --verbose
 
 ## 2. Test Suites Overview
 
+**Inventory — 43 suites / 559 tests (2026-09-29, after `payment_mockup.md` M0–M3):**
+
+| Suite | Tests | Status | Guide |
+|-------|-------|--------|-------|
+| `types/booking.test.ts` | 4 | ✅ | §2.1 |
+| `lib/utils.test.ts` | 14 | ✅ | §2.2 |
+| `lib/seed-data.test.ts` | 23 | ✅ | §2.3 + L12 drift pins (2026-09-29) |
+| `lib/errors.test.ts` | 15 | ✅ | error → status/envelope mapping (fix_plan §7) |
+| `lib/email.test.ts` | 7 | ✅ | pins L6 timezone + L7 fake-success (fix_plan §7) |
+| `lib/emailTemplates.test.ts` | 16 | ✅ | added 2026-09-29 — L8 escaping, L6 host-TZ, localhost links |
+| `components/Button.test.tsx` | 7 | ✅ | §2.4 |
+| `components/Card.test.tsx` | 3 | ✅ | §2.4 |
+| `components/StatusBadge.test.tsx` | 8 | ✅ | §2.4 |
+| `components/Logo.test.tsx` | 4 | ✅ | §2.4 |
+| `components/TrialClassCard.test.tsx` | 7 | ✅ | §2.4 |
+| `components/BookingForm.test.tsx` | 8 | ✅ | §2.4 |
+| `components/BookingStatusDialog.test.tsx` | 14 | ✅ | §2.4 |
+| `components/Header.test.tsx` | 5 | ✅ | §2.4 |
+| `components/MockPaymentForm.test.tsx` | 8 | ✅ | §2.4 |
+| `components/RosterTable.test.tsx` | 10 | ✅ | §2.4 |
+| `components/BookingConfirmation.test.tsx` | 6 | ✅ | added 2026-09-29 (fix_plan §7) |
+| `components/BookingStats.test.tsx` | 3 | ✅ | added 2026-09-29 (fix_plan §7) |
+| `components/ErrorBoundary.test.tsx` | 6 | ✅ | added 2026-09-29 (fix_plan §7) |
+| `components/Footer.test.tsx` | 5 | ✅ | added 2026-09-29 (fix_plan §7) |
+| `components/RecentActivity.test.tsx` | 4 | ✅ | added 2026-09-29 (fix_plan §7) |
+| `components/Skeleton.test.tsx` | 11 | ✅ | added 2026-09-29 (fix_plan §7) |
+| `components/StripePaymentForm.test.tsx` | 9 | ✅ | added 2026-09-29 (fix_plan §7) |
+| `api/routes.test.ts` | 6 | ✅ | export smoke only |
+| `api/concurrency.test.ts` | 10 | ⚠ | **mock-based**, not a real race proof (fix_plan §7) |
+| `api/paymentsHistory.test.ts` | 6 | ✅ | added 2026-09-29 — B18 + D-B25 pin (flipped) |
+| `api/paymentsStripe.test.ts` | 22 | ✅ | Stripe-adapter contract (R11) — B4, L4, L2, B8 pins **flipped 2026-09-29** |
+| `api/notifications.test.ts` | 27 | ✅ | added 2026-09-29 — L7, L6, B19, L14, D-B27 pin (flipped) + genuine-404 case |
+| `api/adminStudents.test.ts` | 6 | ✅ | added 2026-09-29 — booking_count projection + caching gap |
+| `lib/paymentsMock.test.ts` | 22 | ✅ | added 2026-09-29 — PayMock core (R2/R6/R9/R10, signatures, delivery modes, B16) |
+| `api/paymentsMock.test.ts` | 18 | ✅ | added 2026-09-29 — mock-mode route integration (R1/R3/R4/R5/R8/R12, D10 guard) |
+| `api/paymentsMock.race.test.ts` | 3 | ✅ | added 2026-09-29 — webhook storms (parallel / out-of-order / vs HTTP confirm) |
+| `auth/seed-sql.test.ts` | 11 | ✅ | `login_register_testing.md` |
+| `auth/signup.test.tsx` | 26 | ✅ | `login_register_testing.md` |
+| `auth/login.test.tsx` | 28 | ✅ | `login_register_testing.md` |
+| `auth/callback.test.ts` | 15 | ✅ | `login_register_testing.md` |
+| `auth/middleware.test.ts` | 23 | ✅ | `login_register_testing.md` |
+| `auth/auth-hooks.test.tsx` | 13 | ✅ | `login_register_testing.md` |
+| `auth/header-auth.test.tsx` | 8 | ✅ | `login_register_testing.md` |
+| `booking/bookingSchema.test.ts` | 20 | ✅ | `booking_testing.md` L1 (UT-008/009 flipped 2026-09-29) |
+| `booking/bookingApi.test.ts` | 53 | ✅ | `booking_testing.md` L3 (API-019/022/023/026/027/028 flipped 2026-09-29) |
+| `booking/bookingUi.test.tsx` | 32 | ✅ | `booking_testing.md` L2 (UI-015/016 flipped 2026-09-29) |
+| `booking/bookingNfr.test.ts` | 13 | ✅ | `booking_testing.md` L6 |
+| **Total** | **559** | **492 pass / 67 todo** | |
+
+Subsections below describe the original unit/component suites; auth and booking have their own executed plans.
+
 ### 2.1 Type Tests (`src/__tests__/types/booking.test.ts`)
 
 | Test | Description |
 |------|-------------|
-| BookingStatus enum values | Verifies all 6 status strings match seed.sql |
-| BookingStatus count | Ensures exactly 6 statuses |
+| BookingStatus enum values | Asserts the **TypeScript enum against itself** — it does **not** read `seed.sql` (fix_plan §7). The real mismatch (enum has `DUPLICATE_BOOKING`/`NO_SEATS_AVAILABLE`, omits DB's `REFUNDED`) is pinned by `BK-UT-011` in `booking_testing.md` |
+| BookingStatus count | Ensures exactly 6 statuses (DB CHECK allows 5 — see above) |
 | PaymentAttemptStatus values | Verifies 3 payment statuses |
 | PaymentAttemptStatus count | Ensures exactly 3 statuses |
 
@@ -173,18 +228,27 @@ Expected:
 curl -X POST http://localhost:3000/api/bookings \
   -H "Content-Type: application/json" \
   -d '{
-    "parent_first_name": "TEST",
-    "parent_last_name": "PARENT",
-    "parent_email": "test@example.com",
-    "parent_residential_id": "RES999",
-    "student_first_name": "TEST",
-    "student_last_name": "STUDENT",
-    "student_residential_id": "RES888",
-    "trial_class_id": "MT-M-20261001T1000-4"
+    "trial_class_id": "MT-M-20261001T1000-4",
+    "parent": {
+      "first_name": "alice",
+      "last_name": "parent",
+      "email": "test@example.com",
+      "phone": "+65 9123 4567"
+    },
+    "student": {
+      "first_name": "charlie",
+      "last_name": "student",
+      "grade": 4
+    }
   }' | jq
 ```
 
-Expected:
+> The body is **nested** (`parent` / `student` objects, `phone` + `grade`) because that is what
+> `CreateBookingSchema` accepts. The flat body the UI currently sends (and the flat body earlier versions of this
+> guide documented) returns **400 VALIDATION_ERROR** — defect **B1**.
+> `trial_class_id` must match `/^[A-Z]{2}-[A-Z]-\d{8}T\d{4}-\d+$/`; seed ids like `TRC-001` are rejected — defect **B5**.
+
+Expected (valid payload, class with free seats):
 - `success: true`
 - Returns `booking_id` and `status: "PENDING_PAYMENT"`
 
@@ -196,11 +260,16 @@ curl -X POST http://localhost:3000/api/payments/confirm \
   -H "Content-Type: application/json" \
   -d '{
     "booking_id": "YOUR_BOOKING_ID",
-    "payment_result": "SUCCESS"
+    "payment_result": "success"
   }' | jq
 ```
 
-Expected:
+> `payment_result` must be lowercase `success` / `failure` (`ConfirmPaymentSchema`). The uppercase `SUCCESS` /
+> `FAILED` values the UI actually sends are rejected with 400 — defect **B3**.
+> `booking_id` must also be a UUID, while every id the app generates is `BOOKING###-YYYYMMDD` — defect **B4**, so a
+> generated id still returns 400 today.
+
+Expected (after B3/B4 are fixed):
 - `success: true`
 - `status: "CONFIRMED"`
 
@@ -329,17 +398,21 @@ To test this properly, you'd need parallel requests:
 # Terminal 1
 curl -X POST http://localhost:3000/api/payments/confirm \
   -H "Content-Type: application/json" \
-  -d '{"booking_id": "BOOKING_ID_1", "payment_result": "SUCCESS"}' &
+  -d '{"booking_id": "BOOKING_ID_1", "payment_result": "success"}' &
 
 # Terminal 2
 curl -X POST http://localhost:3000/api/payments/confirm \
   -H "Content-Type: application/json" \
-  -d '{"booking_id": "BOOKING_ID_2", "payment_result": "SUCCESS"}' &
+  -d '{"booking_id": "BOOKING_ID_2", "payment_result": "success"}' &
 
 wait
 ```
 
 One should succeed, one should fail with `NO_SEATS_AVAILABLE`.
+
+> **This manual check does not prove race safety.** The two commands above are sequential shells, and the
+> automated stand-in for it (`src/__tests__/api/concurrency.test.ts`) mocks `supabase.rpc`. The real proof is
+> `artifacts/booking_testing.md` L4/L5 (14 RPC + 24 race cases against a database) — **blocked on credentials (E2)**.
 
 ---
 
@@ -347,11 +420,22 @@ One should succeed, one should fail with `NO_SEATS_AVAILABLE`.
 
 After running `npm run test:coverage`, open `coverage/lcov-report/index.html` in browser.
 
-Target coverage:
-- Statements: >70%
-- Branches: >70%
-- Functions: >70%
-- Lines: >70%
+Gate (from `jest.config.js`): **70 %** on all four metrics.
+
+Measured 2026-09-29 (`npx jest --ci --coverage`) — **gate met, jest exits 0**:
+
+| Metric | After booking suites | After F8 doc suites | After F8 route/template suites | After payment_mockup M0–M3 (current) | Gate |
+|--------|----------------------|---------------------|--------------------------------|--------------------------------------|------|
+| Statements | 65.35 % | 73.77 % | 88.46 % | **89.56 %** | 70 % ✅ |
+| Branches | 53.82 % | 65.65 % | 80.76 % | **79.08 %** | 70 % ✅ |
+| Functions | 67.97 % | 82.58 % | 89.72 % | **92.28 %** | 70 % ✅ |
+| Lines | 64.95 % | 73.83 % | 89.36 % | **90.92 %** | 70 % ✅ |
+
+*All four metrics clear the 70 % gate as of 2026-09-29 (re-measured after `payment_mockup.md` M0–M3: statements, functions and lines rose; **branches slipped 80.76 % → 79.08 %** because the new provider-resolution / D10-guard / env-fallback branches are only partly exercised — still well above the gate). D-v9 ("leave the
+threshold, track the gap") is closed — `branches` went from 65.65 % to 80.76 % once the route and email-template suites
+were added. The earlier 73.77 / 65.65 reading from the same day is retained above for history; it could not be
+reproduced after the route suites landed. Caveat that still applies: `collectCoverageFrom` excludes `src/**/page.tsx`,
+where most P0 defects live (fix_plan §7) — so the number over-estimates safety.*
 
 ---
 

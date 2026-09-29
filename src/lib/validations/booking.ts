@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { bookingIdSchema } from "@/lib/validations/ids";
+import type { PaymentResult } from "@/lib/payments/contracts";
 
 export const CreateBookingSchema = z.object({
   trial_class_id: z
@@ -54,11 +56,17 @@ export const CreateBookingSchema = z.object({
 });
 
 export const ConfirmPaymentSchema = z.object({
-  booking_id: z
-    .string()
-    .uuid("Invalid booking ID format"),
-  
-  payment_result: z.enum(["success", "failure"]),
+  booking_id: bookingIdSchema,
+
+  // D1: canonical SUCCESS | FAILED (what the UI sends and what the RPC SQL
+  // compares). The lowercase spellings are tolerated for one release and
+  // normalised here so server, UI and RPC share a single casing — note the
+  // legacy pair was ("success","failure"), which maps to SUCCESS|FAILED.
+  payment_result: z
+    .enum(["SUCCESS", "FAILED", "success", "failure"])
+    .transform((value): PaymentResult =>
+      value.toLowerCase() === "success" ? "SUCCESS" : "FAILED"
+    ),
 });
 
 export const TrialClassQuerySchema = z.object({

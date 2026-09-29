@@ -8,6 +8,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { Button } from "@/components/Button";
+import { TRIAL_CLASS_PRICE_DISPLAY } from "@/lib/payments/price";
 
 interface StripePaymentFormProps {
   bookingId: string;
@@ -66,7 +67,7 @@ export function StripePaymentForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="p-4 bg-gray-50 rounded-lg">
         <p className="text-sm text-gray-600 mb-2">
-          Amount to pay: <span className="font-semibold text-gray-900">$20.00</span>
+          Amount to pay: <span className="font-semibold text-gray-900">{TRIAL_CLASS_PRICE_DISPLAY}</span>
         </p>
         <p className="text-xs text-gray-500">
           Booking ID: {bookingId}
@@ -111,7 +112,7 @@ export function StripePaymentForm({
             Processing...
           </span>
         ) : (
-          "Pay $20.00"
+          "Pay " + TRIAL_CLASS_PRICE_DISPLAY
         )}
       </Button>
     </form>

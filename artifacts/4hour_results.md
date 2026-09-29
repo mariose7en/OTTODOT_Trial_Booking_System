@@ -8,6 +8,8 @@ Tests:       110+ passed, 110+ total
 Snapshots:   0 total
 ```
 
+> **Snapshot of the 4-hour build (Sep 25).** Current numbers (Sep 29): **26 suites / 377 tests** (322 pass, 55 `todo`) — see `README.md` → Testing. The per-suite table below was the build-time inventory and does not include the auth, booking and API suites added later.
+
 | Test Suite | Tests | Status |
 |------------|-------|--------|
 | `types/booking.test.ts` | 9 | PASS |
@@ -33,14 +35,18 @@ Snapshots:   0 total
 ### From `deliverable_4hour.md`
 
 - [x] Schema + seed.sql - Parents, Students, Trial Classes, Bookings, Payment Attempts
-- [x] Smart IDs, uppercase consistency, timestamps, indexes (in `artifacts/seed.sql`)
+- [x] Smart IDs, uppercase consistency, timestamps, indexes - **partly false**: `artifacts/seed.sql` uses
+  sequential `PAR-001` / `STU-001` ids; smart ids only exist in `src/lib/seed-data.ts` (fix_plan §7)
 - [x] Stored procedure `confirm_trial_booking` for correctness (in `artifacts/seed.sql`)
 - [x] Next.js API route for payment confirm - calls Supabase RPC
 - [x] Maps results into TypeScript enums (`BookingStatus`, `PaymentAttemptStatus`)
-- [x] Error handling included in all API routes
+- [x] Error handling included in all API routes - **overstated**: `auth/callback` has none, and several routes
+  return a *string* `error` where others return an object (B8)
 - [x] TypeScript enums in `src/types/booking.ts`
 - [x] README.md with approach, backend design, edge cases, tradeoffs
 - [x] Seed data: Class A (0 confirmed), Class B (3 confirmed), duplicate attempt, payment failure
+  - **two incompatible datasets exist**: this describes `lib/seed-data.ts`; `artifacts/seed.sql` seeds different
+  parents/students/class ids (L12) - only one of them satisfies the validation regexes
 
 ### Frontend UI (from `artifacts/front_end.md`)
 
@@ -145,7 +151,7 @@ OTTODOT_Trial_Booking_System/
 |--------|----------|-------------|--------------|
 | GET | `/api/trial-classes` | List classes with seats | Query: `?available=true` |
 | GET | `/api/bookings` | List all bookings | - |
-| POST | `/api/bookings` | Create new booking | `{ parent_first_name, parent_last_name, parent_email, parent_residential_id, student_first_name, student_last_name, student_residential_id, trial_class_id }` |
+| POST | `/api/bookings` | Create new booking | **Documented flat body is wrong** - `CreateBookingSchema` requires `{ trial_class_id, parent: {first_name,last_name,email,phone}, student: {first_name,last_name,grade} }`; the flat shape returns 400 (B1) |
 | POST | `/api/payments/confirm` | Confirm payment | `{ booking_id, payment_result }` |
 | GET | `/api/roster/:class_id` | Get class roster | - |
 | POST | `/api/seed` | Initialize seed data | - |

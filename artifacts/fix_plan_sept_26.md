@@ -198,18 +198,19 @@ The primary user journey **create booking → pay → confirm → view confirmat
 |-----|-------|---------|
 | P0 | `concurrency.test.ts` proves race-condition safety ("Concurrency tests ✅", `todo_sprint_core.md:510`) | All 10 tests **mock `supabase.rpc` then assert the mock's return**; RPC, locks, seat counting never executed |
 | P0 | Coverage gate 70% (`jest.config.js:38-45`) | `collectCoverageFrom` **excludes `src/**/page.tsx`** — all P0 bugs live outside the gate |
-| P1 | "12 suites / 110+ tests" (`README.md:167,266-267`, `complete_plan.md:153-158`, `4hour_results.md:6-7`) | **15 suites / 125 tests** (own `4hour_results.md:11-27` table lists 15) |
-| P1 | `test.md:13-14` "8 suites / 65 tests" | Lists only a subset; omits 7 suites |
-| P1 | `test.md:54` "BookingStatus matches seed.sql" | Test asserts the enum **against itself**; `seed.sql` never read — and they don't match (§6) |
+| P1 | "12 suites / 110+ tests" (`README.md:167,266-267`, `complete_plan.md:153-158`, `4hour_results.md:6-7`) | **15 suites / 125 tests** (own `4hour_results.md:11-27` table lists 15) — **corrected 2026-09-29 to 40 suites / 529 tests (445 pass / 84 todo); `4hour_results` kept as a dated snapshot with a pointer to the current numbers** |
+| P1 | `test.md:13-14` "8 suites / 65 tests" | Lists only a subset; omits 7 suites — **corrected 2026-09-29: §1 expected output + a full 40-suite inventory table** |
+| P1 | `test.md:54` "BookingStatus matches seed.sql" | Test asserts the enum **against itself**; `seed.sql` never read — and they don't match (§6) — **doc corrected 2026-09-29; the mismatch itself is pinned by `BK-UT-011` and still open (§6)** |
 | P1 | `routes.test.ts:21-75` | Only `expect(route.GET).toBeDefined()` — **zero request/response assertions**; none of B1–B7 can fail CI |
-| P1 | Zero suites exist for | `lib/validations`, `lib/errors`, `lib/email`, `lib/email-templates`, `lib/auth/*`, `middleware.ts`; routes `create-intent/webhook/refund/history/notifications/send-reminders/admin-students/auth-callback`; components `BookingConfirmation, BookingStats, ErrorBoundary, Footer, RecentActivity, Skeleton, StripePaymentForm` (7/17) |
-| P1 | `seed-data.test.ts:8-54` asserts `2 parents / AL-… ids` | `README.md:273-285` says `seed.sql` (3 parents / `PAR-001`) is pre-loaded → green test against the wrong dataset |
+| P1 | Zero suites exist for | ~~`lib/errors`, `lib/email`, components `BookingConfirmation, BookingStats, ErrorBoundary, Footer, RecentActivity, Skeleton, StripePaymentForm`~~ **added 2026-09-29 (9 suites / 62 tests)**; ~~`lib/email-templates`, routes `history/create-intent/refund/webhook/notifications/send-reminders/admin-students`, wrong-dataset `seed-data.test.ts`~~ **added the same day (5 suites / 81 tests + 5 L12 drift tests)**. `auth/callback` already had `auth/callback.test.ts` (15 tests) and `lib/validations` is covered indirectly by `bookingSchema.test.ts` → **the list is now fully tested** |
+| P1 | `seed-data.test.ts:8-54` asserts `2 parents / AL-… ids` | `README.md:273-285` says `seed.sql` (3 parents / `PAR-001`) is pre-loaded → green test against the wrong dataset — **drift now pinned 2026-09-29 by an L12 block in the same file that reads `artifacts/seed.sql` and asserts counts, ids, emails and the id-regex split** |
 | P1 | `test.md:171-201` curl examples | Both documented bodies (flat booking, `payment_result:"SUCCESS"`) return **400** against real schemas |
 | P2 | `4hour_results.md:35-43` deliverables | "Smart IDs in seed.sql" (seed.sql uses `PAR-001` sequential), "Class A/B scenarios" true only for `lib/seed-data.ts`, "error handling in all routes" false for `auth/callback` |
-| P2 | `BookingStatusDialog.test.tsx:117-129` | Backdrop assertion wrapped in `if (backdrop)` → passes vacuously; no test for unknown-status crash (`statusConfig[status]`, `:80`) |
+| P2 | `BookingStatusDialog.test.tsx:117-129` | Backdrop assertion wrapped in `if (backdrop)` → passes vacuously; no test for unknown-status crash (`statusConfig[status]`, `:80`) — **fixed 2026-09-29: backdrop asserted non-null before the click, `fallbackConfig` added to `BookingStatusDialog`, unknown-status (`REFUNDED`) test added (14 tests)** |
 
 ### Documentation corrections required (same sprint as code)
-`README.md:167,218-232,266-267,289,295-317,313-314,329-330` · `artifacts/api.md:7,93-113,135-155,404-408,419,425-431` · `artifacts/test.md:13-14,54,171-201,218` · `artifacts/4hour_results.md:6-7,35-43,119-131,148` · `artifacts/complete_plan.md:153-158` · `artifacts/todo_sprint_core.md:510,565`.
+**Corrected 2026-09-29:** `README.md` (suite counts, Auth column note, edge-case reality table, features reality note) · `artifacts/api.md` (auth paragraph, error envelope + B8 note, create/get examples, `TRC-001`→`MT-M-…`, status-code reality, rate-limit reality, admin-students note) · `artifacts/test.md` (expected output, 40-suite inventory, `test.md:54` claim, create/confirm/race curl bodies, coverage table — gate met 88.46/80.76/89.72/89.36) · `artifacts/4hour_results.md` (dated-snapshot note + deliverable caveats + flat-body correction) · `artifacts/complete_plan.md` (test table) · `artifacts/todo_sprint_core.md:510` (concurrency claim corrected).
+**Still open:** `README.md` line references that moved, `artifacts/api.md` endpoint-by-endpoint auth column for the *missing* endpoints (cancel / class CRUD / sitemap), `artifacts/4hour_results.md:119-131,148` tree/skeleton claims, `artifacts/todo_sprint_core.md:565`, `artifacts/test.md:218` roster numbers (seed-dependent)..
 
 ---
 
@@ -274,11 +275,11 @@ The primary user journey **create booking → pay → confirm → view confirmat
 **Goal:** every request the UI sends validates on the server. Closes B1, B2, B3, B4, B5, B14(partial), §6 shape/ID rows.
 - [ ] Decide canonical booking-create shape: **nested** (matches Zod + `api.md`) — update `types/booking.ts:69-78` to `z.infer<CreateBookingSchema>`
 - [ ] Add `phone` (required) and `grade` (select 1–6) fields to `BookingForm.tsx`; add real `<form>` + `htmlFor`/`id` while touching it
-- [ ] Unify `payment_result`: schema `z.enum(["SUCCESS","FAILED"])` (matches UI + RPC SQL) and update `ConfirmPaymentSchema`; type it in `ConfirmPaymentRequest`
-- [ ] Replace every `z.string().uuid()` on business ids with shared `IdSchema`s (`bookingId`, `trialClassId`, `studentId`, `parentId`) that accept seed + generated formats
+- [ ] Unify `payment_result`: schema `z.enum(["SUCCESS","FAILED"])` (matches UI + RPC SQL) and update `ConfirmPaymentSchema`; type it in `ConfirmPaymentRequest` — **decided D1 in `payment_mockup.md` §6.1, implemented in M1 (lowercase tolerance kept for one release)**
+- [ ] Replace every `z.string().uuid()` on business ids with shared `IdSchema`s (`bookingId`, `trialClassId`, `studentId`, `parentId`) that accept seed + generated formats — **payment-path half decided D2 / implemented in M1 (`src/lib/payments/id.ts`); `trialClassId`/`studentId`/`parentId` + `CreateBookingSchema` (B5) remain F1**
 - [ ] One ID regex/format decision documented in `api.md`; make `seed.sql`, `lib/seed-data.ts`, `api.md:100` examples agree
 - [ ] Fix `BookingQuerySchema.status` to the DB CHECK set (drop `COMPLETED`)
-- [ ] `ApiResponse` → discriminated union; add `getApiErrorMessage()`; use it in all 10 pages that render `error` (B8)
+- [ ] `ApiResponse` → discriminated union; add `getApiErrorMessage()`; use it in all 10 pages that render `error` (B8) — **payment-route half decided D3 in `payment_mockup.md` §6.1 (all five payment routes use `createErrorResponse` from M1); client-side union + 10 pages remain F1**
 - [ ] Wrap all `request.json()` in try/catch → 400 `VALIDATION_ERROR` (8 routes)
 - **Exit gate:** F0 contract tests green; `POST /api/bookings` + `POST /api/payments/confirm` succeed from the real UI against real seed data.
 
@@ -296,11 +297,11 @@ The primary user journey **create booking → pay → confirm → view confirmat
 
 ### Fix Sprint F3 — Booking & Payment Core Logic (P0/P1) (1.5 d)
 **Goal:** money paths are correct, atomic and auditable. Closes L1, L2, L3, L4, L5, B17, L12(partial), L6(timezones).
-- [ ] Extend `confirm_trial_booking` with `p_action` (CONFIRM/CANCEL/REFUND) + status guard; **webhook calls the RPC** instead of `UPDATE` (L2); failed RPC → return 409/409-class error to Stripe instead of 200
+- [ ] Extend `confirm_trial_booking` with `p_action` (CONFIRM/CANCEL/REFUND) + status guard; **webhook calls the RPC** instead of `UPDATE` (L2); failed RPC → return 409/409-class error to Stripe instead of 200 — **half done `payment_mockup.md` M3 (2026-09-29): `confirmBooking()` is the single writer for confirm/webhook (no direct `UPDATE`, out-of-order ignored, 409 object envelope); the `p_action` SQL extension + cross-instance row locks remain F3 (needs DB, E2)**
 - [ ] Booking creation: reject/merge duplicate `PENDING_PAYMENT` for same (student, class); define seat policy (recommended: RPC-reserved seats with `PENDING_PAYMENT` expiry, or explicit "reserve at confirm only" + UI messaging) (L3)
 - [ ] Fix student/parent identity: stop using grade/phone as `residential_id`; look up student by `student_residential_id + parent_id`; write `grade`/`email` columns; add retry/uuid-suffix to `generateSmartId` (L1, L11)
-- [ ] Generate `payment_attempts.id` in webhook/refund inserts (B17); store Stripe `payment_intent` in `txn_id`; confirm route records attempt failure instead of swallowing (L5 error branches)
-- [ ] Refund: use `payment_intent` from the SUCCESS attempt; record with a distinct status/type; update `payment_headers`/`payment_details` or delete the fake invoice tables (decide in F6)
+- [ ] Generate `payment_attempts.id` in webhook/refund inserts (B17); store Stripe `payment_intent` in `txn_id`; confirm route records attempt failure instead of swallowing (L5 error branches) — **done `payment_mockup.md` M3 (2026-09-29): shared `generateAttemptId()`, webhook records `txn_id = <pi_…>`, ledger failures are 500s (D-B07)**
+- [ ] Refund: use `payment_intent` from the SUCCESS attempt; record with a distinct status/type; update `payment_headers`/`payment_details` or delete the fake invoice tables (decide in F6) — **payment-path half done `payment_mockup.md` M3 (2026-09-29): `txn_id` must be a real `pi_…` (else 400 `BOOKING_ERROR`), provider port issues the refund, ledger row moves to `REFUNDED` (never a second `SUCCESS`); fake invoice tables + auth remain F3/F4**
 - [ ] Payment history: resolve bookings via auth user → `parents.auth_user_id` → students (B18); accept `student_id` only after linkage exists
 - [ ] Timezone-correct date formatting: single `formatDateTime(iso, timeZone)` used by emails + UI; reminders computed in `Asia/Singapore` day boundaries; reminder dedup column (L6, L14)
 - [ ] Map RPC result codes → response `{status, code}` so UI and DB never diverge (L5)
@@ -337,7 +338,7 @@ The primary user journey **create booking → pay → confirm → view confirmat
 - [ ] Remove dead exports: `utils.ts` helpers (or use them — recommended: use `getSeatsRemaining`/`formatDate` in `TrialClassCard`/`email`), `auth/server.ts` unused fns, `getSupabaseClient`, `BookingError`, unused `types`/`*Input` types, unused imports flagged by `noUnusedLocals`
 - [ ] Single `formatDate/formatTime` (with timezone) shared by `email.ts` and `utils.ts`; single seat-status util; single brand text (`Footer` vs `Logo`); single error UI (keep `error.tsx`, slim `ErrorBoundary`)
 - [ ] Unify seeds: regenerate `lib/seed-data.ts` from `artifacts/seed.sql` (or delete the API seed route) — one dataset, one id scheme
-- [ ] One price source (`TRIAL_CLASS_PRICE` → shared constant read by UI)
+- [ ] One price source (`TRIAL_CLASS_PRICE` → shared constant read by UI) — **half done `payment_mockup.md` M1 (2026-09-29): `TRIAL_CLASS_PRICE_CENTS`/`_LABEL`/`formatPrice` exported from `src/lib/payments/price.ts`, used by create-intent + both forms + history; `FREE` copy and the product decision (D4 keep-both) remain**
 - [ ] `package.json`: drop `ts-jest`, `ts-node`, `@react-email/render` if unused; add `noUnusedLocals` fallout fixes
 - [ ] `.env.local.example` + README: remove Sentry vars (no code) or add Sentry init; document service-role key correctly; `email-templates` base URL from env (kill `localhost:3000`)
 - [ ] `globals.css`: move `@import` above `@tailwind`
@@ -355,9 +356,9 @@ The primary user journey **create booking → pay → confirm → view confirmat
 
 ### Fix Sprint F8 — Test & Documentation Truth + A11y (1 d)
 **Goal:** docs match reality; accessibility claims become true.
-- [ ] Correct all numbers/claims: README (`12 suites`→actual, endpoint Auth column, features that have no UI), `api.md` (401/403/429, rate limits, response shapes, `TRC-001` examples, nested body), `test.md` (suite list, curl bodies), `4hour_results.md`, `complete_plan.md`, `todo_sprint_core.md` (skeletons/concurrency claims)
-- [ ] Add missing test suites for `validations`, `errors`, `email`, `middleware` (guard behavior), and the 7 untested components; replace `seed-data.test.ts` assertions with the unified seed
-- [ ] Remove vacuous test (`BookingStatusDialog` backdrop `if`) and add unknown-status fallback test (fix `statusConfig[status]` crash with a default branch)
+- [x] Correct all numbers/claims: README (`12 suites`→actual, endpoint Auth column, features that have no UI), `api.md` (401/403/429, rate limits, response shapes, `TRC-001` examples, nested body), `test.md` (suite list, curl bodies), `4hour_results.md`, `complete_plan.md`, `todo_sprint_core.md` (skeletons/concurrency claims) — **done 2026-09-29 (numbers, examples, reality notes); remaining stragglers listed in §7 "Documentation corrections"**
+- [x] Add missing test suites for `validations` (→ covered by `bookingSchema.test.ts`), `errors`, `email`, `middleware` (→ `auth/middleware.test.ts`), the 7 untested components, `lib/email-templates`, the untested API routes and the wrong-dataset `seed-data.test.ts` — **done 2026-09-29: window 3 (9 suites / 62 tests), window 4 (`paymentsHistory` / `paymentsStripe` / `notifications` / `adminStudents` / `emailTemplates` = 5 suites / 81 tests) + 5 L12 drift tests in `seed-data.test.ts`. `auth/callback` was already covered by `auth/callback.test.ts`**
+- [x] Remove vacuous test (`BookingStatusDialog` backdrop `if`) and add unknown-status fallback test (fix `statusConfig[status]` crash with a default branch) — **done 2026-09-29**
 - [ ] A11y: dialog semantics + focus trap + Escape (both modals), `htmlFor/id` on all forms, `role="alert"` on errors, `role="status"` on loaders, `scope="col"`/`<caption>` on tables, `aria-pressed` on filters, `aria-label` on search inputs, `role="progressbar"` on seat bar, replace `confirm()`/`alert()` with styled dialogs
 - [ ] Contrast: darken yellow/blue/green text-button variants to ≥4.5:1 (or dark text on brand color) — requires design sign-off; record decision in README color table
 - [ ] Final: `npm run lint && npx tsc --noEmit && npm test && npm run build` all green; update `artifacts/AI_USAGE.md`
@@ -378,6 +379,12 @@ The primary user journey **create booking → pay → confirm → view confirmat
 | B16, Docker `public/`, CI build, mock concurrency tests, coverage gate, `loading.tsx` | **F7** |
 | §7 doc/test truth, §8 accessibility, vacuous tests | **F8** |
 | Lint errors | **F0** (immediate) |
+| **D-B05, D-B06, D-B21, D-B23** (§15) | **F3** |
+| **D-B07, D-B08** (§15 id/attempt bookkeeping) | **F7** |
+| **D-B20** (§15, no RLS) | **F4** |
+| **D-B22** (§15, `?available` filter) | **F2** |
+| **D-B24** (§15, ignored `?parent_email`) | **F5** |
+| **D-B25, D-B27** (§15, error-code mapping) | **F1** |
 
 **Deferred (backlog, not in F0–F8):** Redis caching & real rate-limit infra, load testing, `StripePaymentForm` full Stripe checkout UX (currently unreachable), Sentry wiring, WCAG audit beyond listed items.
 
@@ -413,4 +420,30 @@ The primary user journey **create booking → pay → confirm → view confirmat
 
 ---
 
-*Document created: September 26, 2026 · Baseline: tsc 0 errors · 15 suites / 125 tests pass · lint 2 errors / 4 warnings · findings: 20 bugs (11 P0), 15 logic defects, 14 endpoint/auth gaps, ~40 dead-code items, 9 build/config issues, 8 type/enum drifts, 10 doc/test truth gaps, 7 a11y gaps*
+## 15. Findings — Booking Test Execution (Sep 29, 2026)
+
+Raised while executing `artifacts/booking_testing.md` (run 1: L1/L2/L3/L6, 80 tests, 44 defect pins).
+"Repro" = automated case that pins the defect (`[BUG-ASSERT]`) in the repo today.
+
+| ID | Sev | Location | Defect | Repro | Sprint |
+|---|---|---|---|---|---|
+| **D-B05** | S1 | `artifacts/seed.sql:266-278` | `confirm_trial_booking` duplicate check has no `id <> p_booking_id` guard → confirming an already-`CONFIRMED` booking (double submit, retry, 2nd worker of a race) **flips the row back to `PAYMENT_FAILED`** and returns `DUPLICATE_BOOKING`. A paid customer loses the seat; no HTTP layer prevents it (webhook path, direct RPC, parallel confirms that both pass the pre-check). | ⛔ L4/L5 (needs DB) — BK-DB-008, BK-RC-004/005/016 | **F3** |
+| **D-B06** | S2 | `artifacts/seed.sql:253-301` | Unknown `p_booking_id` → `FOR UPDATE` matches 0 rows, `v_max_seats` NULL, `COUNT(*)` over `trial_class_id = NULL` = 0 → `0 < NULL` is NULL → function **returns a business code (`NO_SEATS_AVAILABLE` / `PAYMENT_FAILED`) with 0 rows updated**. Callers report success/failure for a row that never changed. | ⛔ L4 (needs DB) — BK-DB-009/010; the HTTP-level guard (404 before RPC) is covered by BK-API-024 ✅ | **F3** |
+| **D-B07** | S2 | `src/app/api/payments/confirm/route.ts:55-69` | `payment_attempts` is inserted *before* the RPC and its failure is only `console.error` → attempt rows can silently vanish; attempt ids share the same 1000-value/day space as bookings (`:16-22`) so a collision also disappears silently. | ✅ BK-API-026 | **F7** → ✅ **fixed** `payment_mockup.md` M3 (2026-09-29): `confirmBooking()` writes `INITIATED` → terminal, ledger failure → 500 `DATABASE_ERROR`; BK-API-026 Target flipped |
+| **D-B08** | S2 | `src/app/api/bookings/route.ts:27-33,:155-169` | Booking id = `BOOKING<000-999>-<date>`, `Math.random()`, **no retry** → same-day PK collision returns a user-visible 500. Collision probability ≈ 70 % by ~38 bookings/day. | ✅ BK-API-013, BK-UT-014 (deterministic) | **F7** |
+| **D-B20** | S1 | `artifacts/seed.sql` (absent) | **No `ENABLE ROW LEVEL SECURITY`, no policies** → with the public anon key (`NEXT_PUBLIC_SUPABASE_URL` + `_ANON_KEY` are client-side) any visitor can `POST /rest/v1/bookings {"status":"CONFIRMED"}` and take a seat without the API, the seat guard or the RPC. | ⛔ L4/L5 (needs DB) — BK-RC-021 | **F4** |
+| **D-B21** | S3 | `src/app/api/bookings/route.ts:143-153`, `trial-classes/route.ts:27-39` | Restatement of **L3** with evidence: `PENDING_PAYMENT` rows are invisible to both the create-time seat check and the availability list (BK-API-029 shows `TRC-002` = 1 free while `BKG-004` is pending) → N buyers can all be shown a free seat and all reach payment for it. | ✅ BK-API-029, BK-RC-007/008/014 (L5) | **F3** |
+| **D-B22** | S3 | `src/app/api/trial-classes/route.ts:13-16,24-40` | `?available=true` filters on `seats_remaining > 0` only → classes that already started are still advertised as bookable; count errors unchecked (B20) and one count query per class (L9). | ✅ BK-NFR-004 | **F2** |
+| **D-B23** | S3 | `src/app/bookings/page.tsx:13-34` | `fetchTrialClasses` never clears `error` on success and the render ternary prefers `error` over the list → after a failed load, **"Try Again" can fetch successfully and still show the error card forever** (button looks broken). | ✅ BK-UI-002 | **F3** |
+| **D-B24** | S3 | `src/app/api/bookings/route.ts` (`?parent_email`) | The `parent_email` query parameter is validated by zod and then **silently ignored — no filter is applied** → `GET /api/bookings?parent_email=x` returns every booking, and callers believe they filtered. | ✅ BK-API-018 | **F5** |
+
+| **D-B25** | S3 | `src/lib/errors.ts:143-161` (via `payments/history`, `admin/students`) | Supabase errors are plain objects (`{code, message, details}`), not `Error` instances → they fall through `handleApiError` to **`INTERNAL_ERROR` with the message "An unexpected error occurred"**; the database code/message (`42P01`, `permission denied`) never reach the client. `DATABASE_ERROR` is effectively unreachable on this path. | ✅ `paymentsHistory.test.ts`, `adminStudents.test.ts` `[BUG-ASSERT D-B25]` (pins flipped) | **F1** → ✅ **fixed** `payment_mockup.md` M1 (2026-09-29): `rethrowIfDatabaseError()` maps supabase error objects to `DATABASE_ERROR {code,message [code]}` |
+| **D-B27** | S3 | `src/app/api/notifications/route.ts:47-51` | `bookingError \|\| !booking` conflates a **database failure with a missing row** → a timeout/permission error answers **404 "Booking not found"**, so callers retry a 404 that was really a 500. | ✅ `notifications.test.ts` `[BUG-ASSERT D-B27]` (pin flipped; genuine-404 case added) | **F1** → ✅ **fixed** `payment_mockup.md` M1 (2026-09-29): `notifications` route uses `rethrowIfDatabaseError` — a DB failure is 500, only `PGRST116` is 404 |
+
+**Confirmed existing findings (reproduced by this run, no new IDs):** B1, B2, B3, B4, B5, B8, B11, B14, B15, B20, L1, L2, L3 (as D-B21), L4, L5, L6, L7, L8, L9, L11, L12, L14, B18, B19, §6 enum drift — **B18, B19, L4, L8, L12, L14 gained route-level `[BUG-ASSERT]` pins on 2026-09-29 (`paymentsHistory`, `notifications`, `paymentsStripe`, `emailTemplates`, `seed-data` suites).**
+
+**Payment defects closed by `artifacts/payment_mockup.md` (M0–M3, 2026-09-29):** **B3** (canonical `SUCCESS`/`FAILED` + lowercase tolerance, `payment_mockup` D1) · **B4** (payment-path booking ids via `bookingIdSchema`, D2) · **B8** *payment-route half* (all five payment routes on `createErrorResponse`, D3 — `notifications`/client-union half still F1) · **B16** (lazy `getStripe()`, D5) · **L2** (`confirmBooking()` single writer: webhook → `confirm_trial_booking`, out-of-order/duplicate ignored, no direct `UPDATE`; in-process per-booking queue — cross-instance locks still need F3/DB) · **L4** (refund resolves the real `pi_…` from the SUCCESS attempt, else 400; ledger row → `REFUNDED`, no second `SUCCESS` — pins flipped in `paymentsStripe.test.ts`; the SQL/cancel-refund half stays F3) · **D-B07**, **D-B25**, **D-B27** (rows above) · **price ×4 half** (D4 keep-both). Flips and `booking_testing.md` §10.6 "Fix commit" cells updated in the same pass.
+
+**Coverage impact:** 35.58 % (Sep 27) → 65.35 % after the booking suites → 73.77 / 65.65 / 82.58 / 73.83 after the Sep 29 F8 doc suites → **88.46 % statements / 80.76 % branches / 89.72 % functions / 89.36 % lines** after the F8 route + email-template + L12 suites. **All four metrics ≥ 70 %, `npx jest --ci --coverage` exits 0 (verified twice 2026-09-29) → D-v9 closed.** Refreshed after `payment_mockup.md` M0–M3 (2026-09-29): **89.56 % statements / 79.08 % branches / 92.28 % functions / 90.92 % lines** over **43 suites / 559 tests (492 pass / 67 todo / 0 fail)** — statements/functions/lines up, branches −1.67 pts from the new env-fallback branches (`PAYMENT_PROVIDER`, provider resolution, D10 guards), still ≥ 70 %. Caveat retained: `collectCoverageFrom` still excludes `src/**/page.tsx`, where the P0s live.
+
+ · Baseline: tsc 0 errors · 15 suites / 125 tests pass · lint 2 errors / 4 warnings · findings: 20 bugs (11 P0), 15 logic defects, 14 endpoint/auth gaps, ~40 dead-code items, 9 build/config issues, 8 type/enum drifts, 10 doc/test truth gaps, 7 a11y gaps*

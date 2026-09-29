@@ -150,12 +150,16 @@
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Test Suites | 12 | ✅ All Passing |
-| Unit Tests | 3 | ✅ |
-| Component Tests | 10 | ✅ |
-| API Tests | 2 | ✅ |
-| Concurrency Tests | 1 | ✅ |
-| **Total Tests** | **110+** | ✅ |
+| Test Suites | 35 | ✅ All Passing |
+| Unit tests (`types/`, `lib/`) | 5 suites / 58 tests | ✅ |
+| Component tests | 17 suites / 118 tests | ✅ |
+| API tests (incl. mock-based concurrency) | 2 suites / 16 tests | ✅ |
+| Auth suites (`src/__tests__/auth/`) | 7 suites / 124 tests | ✅ |
+| Booking suites (L1/L2/L3/L6) | 4 suites / 127 tests | ✅ |
+| **Total Tests** | **559** (492 pass / 67 `todo`) | ✅ |
+
+*Counts measured 2026-09-29 (`npx jest --ci`), **43 suites / 559 tests** after the `payment_mockup.md` M0–M3 pass (40 suites / 529 tests immediately before it) incl. the route/email-template/L12 suites added the same day. The earlier "12 suites / 110+" figure was the Sep 25 snapshot. The `todo` cases are targets behind open defects (B1–B24, D-B05…D-B08, D-B20…D-B27) — see `artifacts/booking_testing.md` §10.6 and `artifacts/fix_plan_sept_26.md` §15. Coverage (2026-09-29, `npx jest --ci --coverage`, after the payment pass): **89.56 % statements / 79.08 % branches / 92.28 % functions / 90.92 % lines** — all four ≥ the 70 % gate, `jest --coverage` exits 0.*
+> **Race safety is not proven by `concurrency.test.ts`** — that suite mocks `supabase.rpc` and asserts the mock (fix_plan §7 P0). Real proof needs L4/L5 against a database (blocked, E2).
 
 ---
 

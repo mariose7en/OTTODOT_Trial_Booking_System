@@ -29,7 +29,7 @@ h1, h2, h3, h4, h5, h6 {
 /* Skip link for keyboard navigation */
 .skip-link {
   @apply absolute -top-10 left-0 bg-ottodot-blue text-white px-4 py-2 z-50;
-  @apply focus:top-0 transition-top duration-200;
+  @apply focus:top-0 transition-[top] duration-200;
 }
 
 @layer components {

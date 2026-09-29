@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
 import { supabase } from "@/lib/supabase";
-import { createErrorResponse } from "@/lib/errors";
+import {
+  createErrorResponse,
+  BookingError,
+  NotFoundError,
+  rethrowIfDatabaseError,
+} from "@/lib/errors";
+import { bookingIdSchema } from "@/lib/validations/ids";
+import { TRIAL_CLASS_PRICE_CENTS } from "@/lib/payments/price";
+import { getPaymentProvider } from "@/lib/payments/provider";
 import { z } from "zod";
 
 const CreatePaymentIntentSchema = z.object({
-  booking_id: z.string().uuid("Invalid booking ID format"),
+  booking_id: bookingIdSchema,
 });
-
-const TRIAL_CLASS_PRICE = 2000; // $20.00 in cents
 
 export async function POST(request: Request) {
   try {
@@ -21,18 +26,13 @@ export async function POST(request: Request) {
       .eq("id", booking_id)
       .single();
 
+    rethrowIfDatabaseError(bookingError);
     if (bookingError || !booking) {
-      return NextResponse.json(
-        { success: false, error: "Booking not found" },
-        { status: 404 }
-      );
+      throw new NotFoundError("Booking", booking_id);
     }
 
     if (booking.status !== "PENDING_PAYMENT") {
-      return NextResponse.json(
-        { success: false, error: "Booking is not in pending payment status" },
-        { status: 400 }
-      );
+      throw new BookingError("Booking is not in pending payment status");
     }
 
     const { data: trialClass, error: classError } = await supabase
@@ -41,18 +41,17 @@ export async function POST(request: Request) {
       .eq("id", booking.trial_class_id)
       .single();
 
+    rethrowIfDatabaseError(classError);
     if (classError || !trialClass) {
-      return NextResponse.json(
-        { success: false, error: "Trial class not found" },
-        { status: 404 }
-      );
+      throw new NotFoundError("Trial class", booking.trial_class_id);
     }
 
     const studentData = booking.students as { first_name: string; last_name: string }[];
     const student = studentData[0];
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: TRIAL_CLASS_PRICE,
+    // Provider port (D5/R11): PayMock in dev/test, Stripe when configured
+    const paymentIntent = await getPaymentProvider().createIntent({
+      amount: TRIAL_CLASS_PRICE_CENTS,
       currency: "usd",
       metadata: {
         booking_id: booking.id,
@@ -65,7 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        client_secret: paymentIntent.client_secret,
+        client_secret: paymentIntent.clientSecret,
         payment_intent_id: paymentIntent.id,
       },
     });

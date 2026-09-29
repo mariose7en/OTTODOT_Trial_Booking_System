@@ -164,7 +164,7 @@ OTTODOT_Trial_Booking_System/
 │   ├── types/
 │   │   └── booking.ts               # TypeScript types & enums
 │   ├── middleware.ts                 # Route protection
-│   └── __tests__/                   # Jest tests (12 suites)
+│   └── __tests__/                   # Jest tests (43 suites / 559 tests)
 ├── artifacts/                       # Documentation
 │   ├── seed.sql                     # Database schema
 │   ├── setup.md                     # Setup guide
@@ -200,6 +200,7 @@ cp .env.local.example .env.local
 # - NEXT_PUBLIC_SUPABASE_ANON_KEY
 # - STRIPE_SECRET_KEY (optional)
 # - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (optional)
+# - PAYMENT_PROVIDER (optional: "mock" | "stripe", default "mock" in dev/test)
 # - SMTP_HOST, SMTP_USER, SMTP_PASS (for emails)
 
 # Run database schema
@@ -230,6 +231,11 @@ For detailed instructions, see [artifacts/setup.md](artifacts/setup.md).
 | POST | `/api/notifications` | Send notifications | Admin |
 | POST | `/api/notifications/send-reminders` | Batch reminders | Admin |
 | POST | `/api/seed` | Initialize seed data | No |
+
+> **The `Auth` column above is what the design intends, not what the code does.** As of 2026-09-29 **no API route
+> performs authentication or authorization** (fix_plan §3.2 P0) - `refund`, `seed`, `notifications` and
+> `admin/students` are fully open, and only the Stripe webhook verifies anything (its signature). `401`/`403` are
+> never returned by any route. Measured detail: `artifacts/api.md`.
 
 ## Database Schema
 
@@ -263,8 +269,12 @@ npm run test:coverage
 npm run test:watch
 ```
 
-**Test Suites:** 12 passed, 12 total
-**Tests:** 110+ passed, 110+ total
+**Test Suites:** 43 passed, 43 total
+**Tests:** 559 total (492 passed, 67 `todo`)
+
+The 67 `todo` cases are *targets* for defects that are still open: the suite pins today's behaviour with
+`[BUG-ASSERT]` and carries the desired assertion as `test.todo` until the fix lands (see
+[`artifacts/booking_testing.md`](artifacts/booking_testing.md) §10 and [`artifacts/fix_plan_sept_26.md`](artifacts/fix_plan_sept_26.md)).
 
 For testing details, see [artifacts/test.md](artifacts/test.md).
 
@@ -283,15 +293,15 @@ The system comes with pre-loaded test data:
 
 See [artifacts/seed.sql](artifacts/seed.sql) for full schema and data.
 
-## Edge Cases Handled
+## Edge Cases (design intent vs. measured reality)
 
-| Case | Handling |
-|------|----------|
-| **Duplicate Booking** | Unique constraint + RPC check |
-| **Overbooking** | Seat count check in locked transaction |
-| **Payment Failure** | Booking marked `PAYMENT_FAILED` |
-| **Last Seat Race** | `FOR UPDATE` row locking |
-| **Concurrent Payments** | Serialized by row lock |
+| Case | Intended handling | Reality (2026-09-29) |
+|------|-------------------|------------------------|
+| **Duplicate Booking** | Unique constraint + RPC check | Unique index is `WHERE status='CONFIRMED'`; the webhook **bypasses the RPC**, and the RPC's duplicate check has no `id <> p_booking_id` guard (**D-B05**) |
+| **Overbooking** | Seat count check in locked transaction | Only inside `confirm_trial_booking()`; create-time and webhook paths never lock (**L2**, **L3**) |
+| **Payment Failure** | Booking marked `PAYMENT_FAILED` | Yes - but the UI sends `SUCCESS`/`FAILED`, which the schema rejects (**B3**) |
+| **Last Seat Race** | `FOR UPDATE` row locking | **Unproven**: `concurrency.test.ts` mocks `supabase.rpc`; the real L4/L5 suites need a database (blocked, E2) |
+| **Concurrent Payments** | Serialized by row lock | Same as above - lock exists only in the RPC path |
 
 ## Features Implemented
 
@@ -329,6 +339,14 @@ See [artifacts/seed.sql](artifacts/seed.sql) for full schema and data.
 - Booking management (search, filter, cancel)
 - Class management (create, delete)
 - Student management
+
+> **Claims that do not hold yet** (details in `artifacts/fix_plan_sept_26.md`): *Admin role checking* and *Route
+> protection middleware* do not cover the API (`/roster` and `/payments/history` are also unprotected);
+> *Cancel booking* and *class create/delete* call endpoints that **do not exist** (B12); *Refund capability* has no
+> caller and no auth (L4); *Payment history* always returns `[]` (B18); *Stripe checkout* is unreachable from the UI;
+> *Booking confirmation emails* / *Payment failure notifications* / *24-hour reminders* are **never triggered by the
+> booking flow** - only `/api/notifications` and `/api/notifications/send-reminders` send mail, neither has a caller
+> or a cron job, and `sendEmail` reports success even with no SMTP configured (L6/L7/B19).
 
 ## Deployment
 
@@ -369,6 +387,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # Optional
 STRIPE_SECRET_KEY=your_stripe_key
+PAYMENT_PROVIDER=mock # "mock" (PayMock) | "stripe"; resolves to "mock" unless STRIPE_SECRET_KEY is set outside tests
 SENTRY_DSN=your_sentry_dsn
 ```
 

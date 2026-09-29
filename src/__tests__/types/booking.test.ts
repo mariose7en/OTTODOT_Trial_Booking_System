@@ -23,8 +23,11 @@ describe("PaymentAttemptStatus enum", () => {
     expect(PaymentAttemptStatus.Failed).toBe("FAILED");
   });
 
-  it("should have 3 statuses", () => {
+  it("should have 4 statuses", () => {
+    // REFUNDED exists in the DB CHECK list and is written by the refund route
+    // (payment_mockup D9) — the ledger must not invent a second SUCCESS row.
     const statusCount = Object.keys(PaymentAttemptStatus).length;
-    expect(statusCount).toBe(3);
+    expect(statusCount).toBe(4);
+    expect(PaymentAttemptStatus.Refunded).toBe("REFUNDED");
   });
 });

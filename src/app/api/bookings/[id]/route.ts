@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { Booking, ApiResponse } from "@/types/booking";
 import { z } from "zod";
-import { NotFoundError, DatabaseError, createErrorResponse } from "@/lib/errors";
+import {
+  NotFoundError,
+  DatabaseError,
+  createErrorResponse,
+  rethrowIfDatabaseError,
+} from "@/lib/errors";
+import { bookingIdSchema } from "@/lib/validations/ids";
 
 const BookingIdSchema = z.object({
-  id: z.string().uuid("Invalid booking ID format"),
+  id: bookingIdSchema,
 });
 
 export async function GET(
@@ -23,6 +29,7 @@ export async function GET(
       .eq("id", validatedParams.id)
       .single();
 
+    rethrowIfDatabaseError(error);
     if (error || !booking) {
       throw new NotFoundError("Booking", validatedParams.id);
     }

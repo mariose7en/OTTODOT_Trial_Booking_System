@@ -506,8 +506,8 @@ Comprehensive sprint breakdown for core features A-C from core.md
 - [x] `routes.test.ts`
 - [x] `concurrency.test.ts`
 
-### 9.4 Integration Tests ✅
-- [x] Concurrency tests for race conditions
+### 9.4 Integration Tests ✅ (claim corrected 2026-09-29)
+- [x] `concurrency.test.ts` — **mock-based only**: it stubs `supabase.rpc` and asserts the stub, so no lock, seat count or RPC was ever exercised (fix_plan §7 P0). Real last-seat proof lives in `artifacts/booking_testing.md` L4/L5, blocked on a database (E2).
 
 ---
 

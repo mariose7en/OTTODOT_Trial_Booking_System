@@ -87,6 +87,17 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class BadRequestError extends AppError {
+  constructor(message: string, code: ErrorCode = "VALIDATION_ERROR") {
+    super({
+      code,
+      message,
+      statusCode: 400,
+    });
+    this.name = "BadRequestError";
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message: string) {
     super({
@@ -106,6 +117,34 @@ export class RateLimitError extends AppError {
       statusCode: 429,
     });
     this.name = "RateLimitError";
+  }
+}
+
+/** Shape of a supabase/PostgREST error: a plain object, never an `Error`. */
+function isDatabaseErrorShape(
+  value: unknown
+): value is { message: string; code?: string } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as { message?: unknown; code?: unknown; details?: unknown };
+  if (typeof candidate.message !== "string") return false;
+  return (
+    typeof candidate.code === "string" ||
+    typeof candidate.details === "string" ||
+    candidate.code === null
+  );
+}
+
+/**
+ * D-B25/D-B27: supabase select errors are plain objects. Callers that branch
+ * on `error || !row` must not turn a database outage into a 404 — rethrow the
+ * supabase error so `handleApiError` maps it to DATABASE_ERROR. PostgREST's
+ * "0 rows from single()" code is a genuine not-found and falls through.
+ */
+export function rethrowIfDatabaseError(error: unknown): void {
+  if (isDatabaseErrorShape(error) && error.code !== "PGRST116") {
+    throw error;
   }
 }
 
@@ -136,6 +175,21 @@ export function handleApiError(error: unknown): {
         message: validationError.message,
         fields: validationError.fields,
         statusCode: validationError.statusCode,
+      },
+    };
+  }
+
+  // D-B25: supabase returns plain error *objects* ({message, details, hint,
+  // code}), which are not `Error` instances and used to fall through to
+  // INTERNAL_ERROR with the database message swallowed. Map them explicitly.
+  if (isDatabaseErrorShape(error)) {
+    const code = typeof error.code === "string" ? error.code : undefined;
+    return {
+      success: false,
+      error: {
+        code: "DATABASE_ERROR",
+        message: code ? `${error.message} [${code}]` : error.message,
+        statusCode: 500,
       },
     };
   }
