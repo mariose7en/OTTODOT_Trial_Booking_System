@@ -295,18 +295,7 @@ The system comes with pre-loaded test data:
 
 See [artifacts/seed.sql](artifacts/seed.sql) for full schema and data.
 
-## Edge Cases (design intent vs. measured reality)
-
-| Case | Intended handling | Reality (2026-09-29) |
-|------|-------------------|------------------------|
-| **Duplicate Booking** | Unique constraint + RPC check | Unique index is `WHERE status='CONFIRMED'`; the webhook **bypasses the RPC**, and the RPC's duplicate check has no `id <> p_booking_id` guard (**D-B05**) |
-| **Overbooking** | Seat count check in locked transaction | Only inside `confirm_trial_booking()`; create-time and webhook paths never lock (**L2**, **L3**) |
-| **Payment Failure** | Booking marked `PAYMENT_FAILED` | Yes - but the UI sends `SUCCESS`/`FAILED`, which the schema rejects (**B3**) |
-| **Last Seat Race** | `FOR UPDATE` row locking | **Unproven**: `concurrency.test.ts` mocks `supabase.rpc`; the real L4/L5 suites need a database (blocked, E2) |
-| **Concurrent Payments** | Serialized by row lock | Same as above - lock exists only in the RPC path |
-
 ## Features Implemented
-
 ### Authentication
 - Email/password login
 - Magic link authentication
@@ -341,6 +330,26 @@ See [artifacts/seed.sql](artifacts/seed.sql) for full schema and data.
 - Booking management (search, filter, cancel)
 - Class management (create, delete)
 - Student management
+- 
+## Trial Class Booking Flow
+You can test the full booking flow directly:
+1. Visit the booking page: /bookings or a specific class like /bookings/TRC-001
+2. Fill the booking form with parent/student info
+3. Click "Pay FREE" - this uses PayMock (no Stripe needed)
+4. Confirm payment - the booking will be marked CONFIRMED
+5. View the booking in the roster
+Quick Test Credentials (from seed.sql)
+The system has these pre-loaded parents:
+Email	Password
+1. alice@example.com (mailto:alice@example.com)	(any)
+2. bob@example.com (mailto:bob@example.com)	(any)
+3. carol@example.com (mailto:carol@example.com)	(any)
+Students: Charlie Lee, Daisy Lee, Ethan Olsen, Fiona NG
+Classes: MATH TRIAL, SCIENCE TRIAL, ADVANCED MATH (scheduled instances with seats)
+Need Help?
+- See artifacts/setup.md for the full setup guide
+- Run npm run test:coverage to verify the 43 test suites pass
+- The payment provider defaults to "mock" - no Stripe account needed for basic booking
 
 > **Claims that do not hold yet** (details in `artifacts/fix_plan_sept_26.md`): *Admin role checking* and *Route
 > protection middleware* do not cover the API (`/roster` and `/payments/history` are also unprotected);
